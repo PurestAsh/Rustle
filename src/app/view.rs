@@ -5,8 +5,7 @@ use iced::widget::{column, container, row, stack, Space};
 use iced::{Alignment, Element, Fill};
 
 use super::message::Message;
-use super::App;
-use crate::ui::components::NavItem;
+use super::{App, Route};
 use crate::ui::{components, pages, theme, widgets};
 
 impl App {
@@ -100,16 +99,14 @@ impl App {
 
         // Left sidebar
         let sidebar = components::sidebar::view(
-            self.ui.active_nav,
+            &self.ui.current_route,
             self.core.locale,
             self.core.is_logged_in,
             self.core.user_info.as_ref(),
             self.ui.importing_playlist.as_ref(),
             &self.library.playlists,
             &self.ui.home.user_playlists,
-            self.ui.playlist_page.current.as_ref().map(|p| p.id),
             &self.ui.sidebar_animations,
-            self.ui.playlist_page.viewing_recently_played,
             self.ui.sidebar_width,
         );
 
@@ -130,42 +127,46 @@ impl App {
 
         let current_playing_id = self.library.current_song.as_ref().map(|s| s.id);
 
-        let main_content = if let Some(playlist) = &self.ui.playlist_page.current {
-            pages::playlist::view(
-                playlist,
-                &self.ui.playlist_page.song_animations,
-                &self.ui.playlist_page.icon_animations,
-                &self.ui.playlist_page.search_animation,
-                self.ui.playlist_page.search_expanded,
-                &self.ui.playlist_page.search_query,
-                liked_songs,
+        let main_content = match &self.ui.current_route {
+            Route::Playlist(_) | Route::NcmPlaylist(_) | Route::RecentlyPlayed => {
+                if let Some(playlist) = &self.ui.playlist_page.current {
+                    pages::playlist::view(
+                        playlist,
+                        &self.ui.playlist_page.song_animations,
+                        &self.ui.playlist_page.icon_animations,
+                        &self.ui.playlist_page.search_animation,
+                        self.ui.playlist_page.search_expanded,
+                        &self.ui.playlist_page.search_query,
+                        liked_songs,
+                        self.core.locale,
+                        self.ui.playlist_page.scroll_state.clone(),
+                        current_user_id,
+                        current_playing_id,
+                    )
+                } else {
+                    Space::new().width(Fill).height(Fill).into()
+                }
+            }
+            Route::Search { .. } => pages::search::view(&self.ui.search, self.core.locale),
+            Route::Home => pages::home::view(
+                &self.ui.search_query,
+                &self.ui.home,
                 self.core.locale,
-                self.ui.playlist_page.scroll_state.clone(),
-                current_user_id,
-                current_playing_id,
-            )
-        } else if !self.ui.search.keyword.is_empty() {
-            pages::search::view(&self.ui.search, self.core.locale)
-        } else {
-            match self.ui.active_nav {
-                NavItem::Home => pages::home::view(
-                    &self.ui.search_query,
-                    &self.ui.home,
-                    self.core.locale,
-                    self.core.is_logged_in,
-                ),
-                NavItem::Discover => pages::discover::view(
-                    &self.ui.discover,
-                    self.core.locale,
-                    self.core.is_logged_in,
-                ),
-                NavItem::Radio => pages::home::view(
-                    &self.ui.search_query,
-                    &self.ui.home,
-                    self.core.locale,
-                    self.core.is_logged_in,
-                ),
-                NavItem::Settings => pages::settings::view(
+                self.core.is_logged_in,
+            ),
+            Route::Discover(mode) => {
+                let _ = mode;
+                pages::discover::view(&self.ui.discover, self.core.locale, self.core.is_logged_in)
+            }
+            Route::Radio => pages::home::view(
+                &self.ui.search_query,
+                &self.ui.home,
+                self.core.locale,
+                self.core.is_logged_in,
+            ),
+            Route::Settings(section) => {
+                let _ = section;
+                pages::settings::view(
                     &self.core.settings,
                     self.ui.active_settings_section,
                     self.core.locale,
@@ -173,18 +174,19 @@ impl App {
                     self.core.is_logged_in,
                     self.core.user_info.as_ref(),
                     self.ui.cache_stats.as_ref(),
-                ),
-                NavItem::AudioEngine => pages::audio_engine::view(
-                    &self.core.settings,
-                    self.core.locale,
-                    Some(self.core.audio_chain.analysis()),
-                ),
+                )
             }
+            Route::AudioEngine => pages::audio_engine::view(
+                &self.core.settings,
+                self.core.locale,
+                Some(self.core.audio_chain.analysis()),
+            ),
         };
 
-        let needs_top_padding = self.ui.playlist_page.current.is_none()
-            && self.ui.search.keyword.is_empty()
-            && !matches!(self.ui.active_nav, NavItem::Settings | NavItem::AudioEngine);
+        let needs_top_padding = !matches!(
+            self.ui.current_route,
+            Route::Settings(_) | Route::AudioEngine | Route::Playlist(_) | Route::NcmPlaylist(_) | Route::RecentlyPlayed | Route::Search { .. }
+        );
 
         let main_content = if needs_top_padding {
             container(main_content)

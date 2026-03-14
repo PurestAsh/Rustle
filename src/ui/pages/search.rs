@@ -10,7 +10,7 @@ use crate::app::{Message, SearchPageState, SearchTab};
 use crate::i18n::Locale;
 use crate::ui::theme;
 
-use crate::ui::primitives::virtual_list::{VirtualList, VirtualListState};
+use crate::ui::primitives::virtual_list::VirtualList;
 
 /// Page size for pagination
 const PAGE_SIZE: u32 = 50;
@@ -28,12 +28,18 @@ pub fn view<'a>(state: &'a SearchPageState, locale: Locale) -> Element<'a, Messa
         row![
             text(&state.keyword)
                 .size(28)
-                .color(theme::TEXT_PRIMARY)
+                .style(|theme| iced::widget::text::Style {
+                    color: Some(theme::text_primary(theme)),
+                })
                 .font(iced::Font {
                     weight: iced::font::Weight::Bold,
                     ..Default::default()
                 }),
-            text(" 的相关搜索").size(28).color(theme::TEXT_MUTED),
+            text(" 的相关搜索")
+                .size(28)
+                .style(|theme| iced::widget::text::Style {
+                    color: Some(theme::text_muted(theme)),
+                }),
         ]
         .align_y(Alignment::Center),
         Space::new().height(24),
@@ -54,19 +60,15 @@ pub fn view<'a>(state: &'a SearchPageState, locale: Locale) -> Element<'a, Messa
                 } else {
                     // Use VirtualList for high performance song list
                     let song_count = state.songs.len();
-                    // Clone references needed for closure
-                    // Wrap songs in Rc to share between closures cheaply
                     let songs = std::rc::Rc::new(state.songs.clone());
                     let songs_for_builder = songs.clone();
                     let songs_for_hover = songs.clone();
-                    
+
                     let song_animations = state.song_animations.clone();
                     let current_page = state.current_page;
 
-                    // Table header
                     let table_header = search_table_header();
 
-                    // Virtual List
                     let virtual_list = VirtualList::new(song_count, SONG_ROW_HEIGHT, move |index| {
                         if index >= songs_for_builder.len() {
                             return Space::new().into();
@@ -75,46 +77,48 @@ pub fn view<'a>(state: &'a SearchPageState, locale: Locale) -> Element<'a, Messa
                         let song = &songs_for_builder[index];
                         let hover_progress = song_animations.get_progress(&song.id);
                         let song_clone = song.clone();
-
-                        // Calculate absolute index for display
                         let index_num = current_page * PAGE_SIZE + index as u32 + 1;
-
-                        // Format duration
                         let duration_secs = song.duration / 1000;
-                        let duration_str =
-                            format!("{}:{:02}", duration_secs / 60, duration_secs % 60);
+                        let duration_str = format!("{}:{:02}", duration_secs / 60, duration_secs % 60);
 
                         let song_row = button(
                             row![
                                 text(format!("{:02}", index_num))
                                     .size(13)
-                                    .color(theme::TEXT_MUTED)
+                                    .style(|theme| iced::widget::text::Style {
+                                        color: Some(theme::text_muted(theme)),
+                                    })
                                     .width(40),
-                                column![text(song.name.clone()).size(14).color(theme::animated_text(
-                                    &iced::Theme::Dark,
-                                    hover_progress
-                                )),]
+                                column![text(song.name.clone())
+                                    .size(14)
+                                    .style(move |theme| iced::widget::text::Style {
+                                        color: Some(theme::animated_text(theme, hover_progress)),
+                                    }),]
                                 .width(Fill),
                                 text(song.singer.clone())
                                     .size(13)
-                                    .color(theme::TEXT_SECONDARY)
+                                    .style(|theme| iced::widget::text::Style {
+                                        color: Some(theme::text_secondary(theme)),
+                                    })
                                     .width(Length::FillPortion(2)),
                                 text(song.album.clone())
                                     .size(13)
-                                    .color(theme::TEXT_MUTED)
+                                    .style(|theme| iced::widget::text::Style {
+                                        color: Some(theme::text_muted(theme)),
+                                    })
                                     .width(Length::FillPortion(2)),
                                 text(duration_str)
                                     .size(13)
-                                    .color(theme::TEXT_MUTED)
+                                    .style(|theme| iced::widget::text::Style {
+                                        color: Some(theme::text_muted(theme)),
+                                    })
                                     .width(60),
                             ]
                             .spacing(12)
                             .align_y(Alignment::Center)
                             .padding(Padding::new(10.0).left(12.0).right(12.0)),
                         )
-                        .style(move |theme, status| {
-                            song_row_style(theme, status, hover_progress)
-                        })
+                        .style(move |theme, status| song_row_style(theme, status, hover_progress))
                         .on_press(Message::PlaySearchSong(song_clone))
                         .width(Fill);
 
@@ -131,7 +135,6 @@ pub fn view<'a>(state: &'a SearchPageState, locale: Locale) -> Element<'a, Messa
                     .on_empty_area(Message::HoverSearchSong(None))
                     .height(Length::Fill);
 
-                    // Combine table header, list, and pagination
                     let list_section = column![
                         table_header,
                         Space::new().height(8),
@@ -149,12 +152,9 @@ pub fn view<'a>(state: &'a SearchPageState, locale: Locale) -> Element<'a, Messa
                         .height(Fill)
                         .into()
                     } else {
-                        column![
-                            list_section.height(Fill),
-                            Space::new().height(32),
-                        ]
-                        .height(Fill)
-                        .into()
+                        column![list_section.height(Fill), Space::new().height(32),]
+                            .height(Fill)
+                            .into()
                     }
                 }
             }
@@ -164,16 +164,15 @@ pub fn view<'a>(state: &'a SearchPageState, locale: Locale) -> Element<'a, Messa
                 } else {
                     let grid = grid_results(state, SearchTab::Albums);
                     let mut col = column![grid];
-                    
+
                     if state.total_count > PAGE_SIZE {
                         col = col.push(Space::new().height(24)).push(pagination(state));
                     }
                     col = col.push(Space::new().height(40));
-                    
+
                     col.padding(Padding::new(32.0).top(0.0)).into()
                 };
-                
-                // For grid views, we use a Scrollable since grid items don't virtualize well yet
+
                 scrollable(content)
                     .width(Fill)
                     .height(Fill)
@@ -187,12 +186,12 @@ pub fn view<'a>(state: &'a SearchPageState, locale: Locale) -> Element<'a, Messa
                 } else {
                     let grid = grid_results(state, SearchTab::Playlists);
                     let mut col = column![grid];
-                    
+
                     if state.total_count > PAGE_SIZE {
                         col = col.push(Space::new().height(24)).push(pagination(state));
                     }
                     col = col.push(Space::new().height(40));
-                    
+
                     col.padding(Padding::new(32.0).top(0.0)).into()
                 };
 
@@ -206,19 +205,11 @@ pub fn view<'a>(state: &'a SearchPageState, locale: Locale) -> Element<'a, Messa
         }
     };
 
-    // Main layout: Header (fixed) + Content (flexible)
-    container(
-        column![
-            header_section,
-            content
-        ]
+    container(column![header_section, content].width(Fill).height(Fill))
         .width(Fill)
         .height(Fill)
-    )
-    .width(Fill)
-    .height(Fill)
-    .style(theme::main_content)
-    .into()
+        .style(theme::main_content)
+        .into()
 }
 
 /// Search tabs component
@@ -236,10 +227,12 @@ fn search_tabs(active_tab: SearchTab) -> Element<'static, Message> {
             let is_active = active_tab == *tab;
             let tab_clone = *tab;
 
-            button(text(*label).size(14).color(if is_active {
-                theme::TEXT_PRIMARY
-            } else {
-                theme::TEXT_MUTED
+            button(text(*label).size(14).style(move |theme| iced::widget::text::Style {
+                color: Some(if is_active {
+                    theme::text_primary(theme)
+                } else {
+                    theme::text_muted(theme)
+                }),
             }))
             .padding(Padding::new(8.0).left(16.0).right(16.0))
             .style(move |theme, status| tab_button_style(theme, status, is_active))
@@ -256,7 +249,7 @@ fn search_tabs(active_tab: SearchTab) -> Element<'static, Message> {
 
 /// Tab button style
 fn tab_button_style(
-    _theme: &iced::Theme,
+    theme: &iced::Theme,
     status: button::Status,
     is_active: bool,
 ) -> button::Style {
@@ -264,9 +257,8 @@ fn tab_button_style(
         iced::Background::Color(theme::ACCENT_PINK)
     } else {
         match status {
-            button::Status::Hovered => {
-                iced::Background::Color(iced::Color::from_rgba(1.0, 1.0, 1.0, 0.1))
-            }
+            button::Status::Hovered => iced::Background::Color(theme::surface_hover(theme)),
+            button::Status::Pressed => iced::Background::Color(theme::surface(theme)),
             _ => iced::Background::Color(iced::Color::TRANSPARENT),
         }
     };
@@ -276,7 +268,7 @@ fn tab_button_style(
         text_color: if is_active {
             iced::Color::WHITE
         } else {
-            theme::TEXT_MUTED
+            theme::text_muted(theme)
         },
         border: iced::Border {
             radius: 8.0.into(),
@@ -287,14 +279,13 @@ fn tab_button_style(
 }
 
 /// Tabs container style
-fn tabs_container_style(_theme: &iced::Theme) -> container::Style {
+fn tabs_container_style(theme: &iced::Theme) -> container::Style {
     container::Style {
-        background: Some(iced::Background::Color(iced::Color::from_rgba(
-            1.0, 1.0, 1.0, 0.05,
-        ))),
+        background: Some(iced::Background::Color(theme::surface(theme))),
         border: iced::Border {
             radius: 12.0.into(),
-            ..Default::default()
+            width: 1.0,
+            color: theme::border_color(theme),
         },
         ..Default::default()
     }
@@ -303,17 +294,36 @@ fn tabs_container_style(_theme: &iced::Theme) -> container::Style {
 /// Search table header
 fn search_table_header() -> Element<'static, Message> {
     row![
-        text("#").size(12).color(theme::TEXT_MUTED).width(40),
-        text("标题").size(12).color(theme::TEXT_MUTED).width(Fill),
+        text("#")
+            .size(12)
+            .style(|theme| iced::widget::text::Style {
+                color: Some(theme::text_muted(theme)),
+            })
+            .width(40),
+        text("标题")
+            .size(12)
+            .style(|theme| iced::widget::text::Style {
+                color: Some(theme::text_muted(theme)),
+            })
+            .width(Fill),
         text("歌手")
             .size(12)
-            .color(theme::TEXT_MUTED)
+            .style(|theme| iced::widget::text::Style {
+                color: Some(theme::text_muted(theme)),
+            })
             .width(Length::FillPortion(2)),
         text("专辑")
             .size(12)
-            .color(theme::TEXT_MUTED)
+            .style(|theme| iced::widget::text::Style {
+                color: Some(theme::text_muted(theme)),
+            })
             .width(Length::FillPortion(2)),
-        text("时长").size(12).color(theme::TEXT_MUTED).width(60),
+        text("时长")
+            .size(12)
+            .style(|theme| iced::widget::text::Style {
+                color: Some(theme::text_muted(theme)),
+            })
+            .width(60),
     ]
     .spacing(12)
     .padding(Padding::new(8.0).left(12.0).right(12.0))
@@ -322,20 +332,20 @@ fn search_table_header() -> Element<'static, Message> {
 
 /// Song row style with hover animation
 fn song_row_style(
-    _theme: &iced::Theme,
+    theme: &iced::Theme,
     status: button::Status,
     hover_progress: f32,
 ) -> button::Style {
-    let bg_alpha = match status {
-        button::Status::Hovered | button::Status::Pressed => 0.08 + 0.04 * hover_progress,
-        _ => 0.04 * hover_progress,
+    let bg = match status {
+        button::Status::Hovered | button::Status::Pressed => {
+            theme::hover_bg_alpha(theme, 0.08 + 0.04 * hover_progress)
+        }
+        _ => theme::hover_bg_alpha(theme, 0.04 * hover_progress),
     };
 
     button::Style {
-        background: Some(iced::Background::Color(iced::Color::from_rgba(
-            1.0, 1.0, 1.0, bg_alpha,
-        ))),
-        text_color: theme::TEXT_PRIMARY,
+        background: Some(iced::Background::Color(bg)),
+        text_color: theme::text_primary(theme),
         border: iced::Border {
             radius: 8.0.into(),
             ..Default::default()
@@ -406,18 +416,22 @@ fn grid_card<'a>(
     let cover = container(Space::new())
         .width(CARD_WIDTH)
         .height(CARD_WIDTH)
-        .style(move |_theme| cover_placeholder_style(hover_progress));
+        .style(move |theme| cover_placeholder_style(theme, hover_progress));
 
     let card_content = column![
         cover,
         Space::new().height(8),
         text(&item.name)
             .size(14)
-            .color(theme::TEXT_PRIMARY)
+            .style(|theme| iced::widget::text::Style {
+                color: Some(theme::text_primary(theme)),
+            })
             .width(CARD_WIDTH),
         text(&item.author)
             .size(12)
-            .color(theme::TEXT_MUTED)
+            .style(|theme| iced::widget::text::Style {
+                color: Some(theme::text_muted(theme)),
+            })
             .width(CARD_WIDTH),
     ]
     .width(CARD_WIDTH);
@@ -437,18 +451,21 @@ fn grid_card<'a>(
 }
 
 /// Cover placeholder style
-fn cover_placeholder_style(hover_progress: f32) -> container::Style {
+fn cover_placeholder_style(theme: &iced::Theme, hover_progress: f32) -> container::Style {
     let shadow_blur = 8.0 + 8.0 * hover_progress;
-    let shadow_alpha = 0.2 + 0.2 * hover_progress;
+    let shadow_alpha = if theme::is_dark_theme(theme) {
+        0.2 + 0.2 * hover_progress
+    } else {
+        0.08 + 0.08 * hover_progress
+    };
     let scale_offset = -2.0 * hover_progress;
 
     container::Style {
-        background: Some(iced::Background::Color(iced::Color::from_rgb(
-            0.15, 0.15, 0.15,
-        ))),
+        background: Some(iced::Background::Color(theme::surface(theme))),
         border: iced::Border {
             radius: 8.0.into(),
-            ..Default::default()
+            width: 1.0,
+            color: theme::border_color(theme),
         },
         shadow: iced::Shadow {
             color: iced::Color::from_rgba(0.0, 0.0, 0.0, shadow_alpha),
@@ -481,7 +498,9 @@ fn pagination<'a>(state: &'a SearchPageState) -> Element<'a, Message> {
     items.push(
         text(format!("{} / {}", current_page + 1, total_pages))
             .size(14)
-            .color(theme::TEXT_SECONDARY)
+            .style(|theme| iced::widget::text::Style {
+                color: Some(theme::text_secondary(theme)),
+            })
             .into(),
     );
 
@@ -504,7 +523,9 @@ fn pagination<'a>(state: &'a SearchPageState) -> Element<'a, Message> {
 
 /// Loading state
 fn loading_state<'a>() -> Element<'a, Message> {
-    container(text("搜索中...").size(16).color(theme::TEXT_MUTED))
+    container(text("搜索中...").size(16).style(|theme| iced::widget::text::Style {
+        color: Some(theme::text_muted(theme)),
+    }))
         .width(Fill)
         .height(200)
         .center_x(Fill)
@@ -518,7 +539,11 @@ fn empty_search_state<'a>(_locale: Locale) -> Element<'a, Message> {
         column![
             text("🔍").size(48),
             Space::new().height(16),
-            text("输入关键词开始搜索").size(16).color(theme::TEXT_MUTED),
+            text("输入关键词开始搜索")
+                .size(16)
+                .style(|theme| iced::widget::text::Style {
+                    color: Some(theme::text_muted(theme)),
+                }),
         ]
         .align_x(Alignment::Center),
     )
@@ -538,7 +563,9 @@ fn empty_results_state<'a>(keyword: &str) -> Element<'a, Message> {
             Space::new().height(16),
             text(format!("未找到 \"{}\" 的相关结果", keyword))
                 .size(16)
-                .color(theme::TEXT_MUTED),
+                .style(|theme| iced::widget::text::Style {
+                    color: Some(theme::text_muted(theme)),
+                }),
         ]
         .align_x(Alignment::Center),
     )

@@ -4,9 +4,8 @@
 use iced::Task;
 
 use crate::app::message::Message;
-use crate::app::state::App;
+use crate::app::state::{App, Route};
 use crate::features::Action;
-use crate::ui::components::NavItem;
 
 impl App {
     /// Handle keyboard-related messages
@@ -91,12 +90,7 @@ impl App {
                 }
             }
             Action::GoHome => {
-                // Close lyrics page if open
-                if self.ui.lyrics.is_open {
-                    self.ui.lyrics.is_open = false;
-                }
-                self.ui.playlist_page.current = None;
-                self.ui.active_nav = NavItem::Home;
+                return self.navigate_to_route(Route::Home, true);
             }
             Action::GoSearch => {
                 // TODO: Implement search page navigation

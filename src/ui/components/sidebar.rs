@@ -4,7 +4,7 @@
 use iced::widget::{Space, button, column, container, mouse_area, row, scrollable, svg, text};
 use iced::{Alignment, Color, Element, Fill, Padding};
 
-use crate::app::{Message, SidebarId};
+use crate::app::{Message, Route, SidebarId};
 use crate::i18n::{Key, Locale};
 use crate::ui::animation::HoverAnimations;
 use crate::ui::components::importing_card::{self, ImportingPlaylist};
@@ -64,16 +64,14 @@ impl LibraryItem {
 
 /// Build the sidebar component
 pub fn view(
-    active_nav: NavItem,
+    current_route: &Route,
     locale: Locale,
     is_logged_in: bool,
     user_info: Option<&crate::app::UserInfo>,
     importing_playlist: Option<&ImportingPlaylist>,
     playlists: &[crate::database::DbPlaylist],
     user_playlists: &[crate::api::SongList],
-    current_playlist_id: Option<i64>, // Local playlist ID
     sidebar_animations: &HoverAnimations<SidebarId>,
-    viewing_recently_played: bool,
     sidebar_width: f32,
 ) -> Element<'static, Message> {
     // Logo section
@@ -102,7 +100,7 @@ pub fn view(
     // Main navigation menu with hover animations
     let nav_items = [NavItem::Home, NavItem::Discover, NavItem::Radio];
     let nav_menu = column(nav_items.into_iter().enumerate().map(|(idx, item)| {
-        let is_active = item == active_nav && current_playlist_id.is_none();
+        let is_active = matches!(current_route.nav_item(), Some(active) if active == item);
         let hover_progress = sidebar_animations.get_progress(&SidebarId::Nav(idx));
         sidebar_button_animated(
             item.icon_svg(),
@@ -126,7 +124,7 @@ pub fn view(
     let recently_played = sidebar_button_animated(
         crate::ui::icons::CLOCK,
         locale.get(Key::LibraryRecentlyPlayed).to_string(),
-        viewing_recently_played, // active when viewing recently played
+        matches!(current_route, Route::RecentlyPlayed),
         recently_played_progress,
         SidebarId::Library(0),
         Message::LibrarySelect(LibraryItem::RecentlyPlayed),
@@ -374,7 +372,7 @@ pub fn view(
     for playlist in playlists {
         let name = playlist.name.clone();
         let id = playlist.id;
-        let is_active = current_playlist_id == Some(id);
+        let is_active = matches!(current_route, Route::Playlist(current_id) if *current_id == id);
         let hover_progress = sidebar_animations.get_progress(&SidebarId::Playlist(id));
         library_items.push(sidebar_button_animated(
             crate::ui::icons::MUSIC,
@@ -418,9 +416,7 @@ pub fn view(
         for playlist in user_playlists {
             let name = playlist.name.clone();
             let id = playlist.id;
-            // NCM playlist IDs are stored as negative in PlaylistView
-            // So we compare current_playlist_id with -(id as i64)
-            let is_active = current_playlist_id == Some(-(id as i64));
+            let is_active = matches!(current_route, Route::NcmPlaylist(current_id) if *current_id == id);
             let hover_progress = sidebar_animations.get_progress(&SidebarId::UserPlaylist(id));
 
             cloud_playlist_items.push(sidebar_button_animated(

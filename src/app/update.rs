@@ -15,6 +15,7 @@ mod playlist;
 mod preload;
 pub mod preload_manager;
 mod queue;
+mod router;
 pub mod queue_navigator;
 mod search;
 mod settings;

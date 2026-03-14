@@ -6,55 +6,54 @@ use iced::time::Instant;
 
 use crate::app::helpers::load_playlist_view;
 use crate::app::message::Message;
-use crate::app::state::App;
+use crate::app::state::{App, Route};
 use crate::ui::widgets::Toast;
 
 impl App {
+    pub(super) fn open_local_playlist_route(&mut self, playlist_id: i64) -> Task<Message> {
+        if self.is_viewing_playlist(playlist_id) {
+            tracing::debug!("Already viewing playlist {}, skipping load", playlist_id);
+            return Task::none();
+        }
+
+        tracing::info!("Opening playlist: {}", playlist_id);
+        self.reset_playlist_page_state();
+        self.ui.playlist_page.load_state =
+            crate::app::update::page_loader::PlaylistLoadState::Loading;
+
+        if let Some(db) = &self.core.db {
+            let db = db.clone();
+            Task::perform(load_playlist_view(db, playlist_id), |result| match result {
+                Some(view) => Message::PlaylistViewLoaded(view),
+                None => Message::DatabaseError("Playlist not found".into()),
+            })
+        } else {
+            Task::none()
+        }
+    }
+
+    pub(super) fn reset_playlist_page_state(&mut self) {
+        self.ui.playlist_page.search_expanded = false;
+        self.ui.playlist_page.search_query.clear();
+        self.ui.playlist_page.viewing_recently_played = false;
+        self.ui.clear_playlist_animations();
+
+        if self.ui.lyrics.is_open {
+            self.ui.lyrics.is_open = false;
+            self.ui.lyrics.animation.stop();
+        }
+    }
+
     /// Handle playlist-related messages
     pub fn handle_playlist(&mut self, message: &Message) -> Option<Task<Message>> {
         match message {
             Message::OpenPlaylist(id) => {
-                let playlist_id = *id;
-
-                // Check if already viewing this playlist - skip redundant load
-                if self.is_viewing_playlist(playlist_id) {
-                    tracing::debug!("Already viewing playlist {}, skipping load", playlist_id);
-                    return Some(Task::none());
+                let route = Route::Playlist(*id);
+                if self.ui.current_route != route {
+                    return Some(self.navigate_to_route(route, true));
                 }
 
-                tracing::info!("Opening playlist: {}", playlist_id);
-                // Reset playlist search state when opening a new playlist
-                self.ui.playlist_page.search_expanded = false;
-                self.ui.playlist_page.search_query.clear();
-                self.ui.playlist_page.viewing_recently_played = false;
-
-                // 清除旧动画状态，防止内存增长
-                self.ui.clear_playlist_animations();
-
-                // Set loading state
-                self.ui.playlist_page.load_state =
-                    crate::app::update::page_loader::PlaylistLoadState::Loading;
-
-                // Close lyrics page if open
-                if self.ui.lyrics.is_open {
-                    self.ui.lyrics.is_open = false;
-                    self.ui.lyrics.animation.stop();
-                }
-                // Push to navigation history
-                self.ui
-                    .nav_history
-                    .push(crate::app::state::NavigationEntry::Playlist(playlist_id));
-                if let Some(db) = &self.core.db {
-                    let db = db.clone();
-                    return Some(Task::perform(
-                        load_playlist_view(db, playlist_id),
-                        |result| match result {
-                            Some(view) => Message::PlaylistViewLoaded(view),
-                            None => Message::DatabaseError("Playlist not found".into()),
-                        },
-                    ));
-                }
-                Some(Task::none())
+                Some(self.open_local_playlist_route(*id))
             }
 
             Message::RequestDeletePlaylist(id) => {

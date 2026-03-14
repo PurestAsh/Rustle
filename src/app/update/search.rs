@@ -5,7 +5,7 @@ use iced::Task;
 
 use crate::api::ncm_api::SearchType;
 use crate::app::message::{Message, SearchResultsPayload};
-use crate::app::state::{App, NavigationEntry, SearchTab};
+use crate::app::state::{App, Route, SearchTab};
 
 /// Default number of results per page
 const PAGE_SIZE: u32 = 50;
@@ -15,33 +15,11 @@ impl App {
     pub fn handle_search(&mut self, message: &Message) -> Option<Task<Message>> {
         match message {
             Message::SearchSubmit => {
-                let keyword = self.ui.search_query.trim().to_string();
-                if keyword.is_empty() {
+                let Some(route) = self.route_for_message(message) else {
                     return Some(Task::none());
-                }
+                };
 
-                // Update search state
-                self.ui.search.keyword = keyword.clone();
-                self.ui.search.current_page = 0;
-                self.ui.search.loading = true;
-                self.ui.search.active_tab = SearchTab::Songs;
-
-                // Clear previous results
-                self.ui.search.songs.clear();
-                self.ui.search.albums.clear();
-                self.ui.search.playlists.clear();
-
-                // Clear playlist page state
-                self.ui.playlist_page.current = None;
-                self.ui.playlist_page.viewing_recently_played = false;
-
-                // Push to navigation history
-                self.ui
-                    .nav_history
-                    .push(NavigationEntry::Search(keyword.clone()));
-
-                // Fetch search results
-                Some(self.fetch_search_results(keyword, SearchTab::Songs, 0))
+                Some(self.navigate_to_route(route, true))
             }
 
             Message::SearchTabChanged(tab) => {
@@ -49,12 +27,12 @@ impl App {
                     return Some(Task::none());
                 }
 
-                self.ui.search.active_tab = *tab;
-                self.ui.search.current_page = 0;
-                self.ui.search.loading = true;
-
-                let keyword = self.ui.search.keyword.clone();
-                Some(self.fetch_search_results(keyword, *tab, 0))
+                let route = Route::Search {
+                    keyword: self.ui.search.keyword.clone(),
+                    tab: *tab,
+                    page: 0,
+                };
+                Some(self.navigate_to_route(route, false))
             }
 
             Message::SearchResultsLoaded(payload) => {
@@ -92,12 +70,12 @@ impl App {
                     return Some(Task::none());
                 }
 
-                self.ui.search.current_page = *page;
-                self.ui.search.loading = true;
-
-                let keyword = self.ui.search.keyword.clone();
-                let tab = self.ui.search.active_tab;
-                Some(self.fetch_search_results(keyword, tab, *page))
+                let route = Route::Search {
+                    keyword: self.ui.search.keyword.clone(),
+                    tab: self.ui.search.active_tab,
+                    page: *page,
+                };
+                Some(self.navigate_to_route(route, false))
             }
 
             Message::HoverSearchSong(id) => {
@@ -140,7 +118,7 @@ impl App {
     }
 
     /// Fetch search results from NCM API
-    fn fetch_search_results(
+    pub(super) fn fetch_search_results(
         &self,
         keyword: String,
         tab: SearchTab,

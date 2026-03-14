@@ -7,14 +7,214 @@ use tracing::{debug, error, info};
 use crate::api::{LoginInfo, NcmClient};
 use crate::app::message::QrLoginStatus;
 use crate::app::state::UserInfo;
-use crate::app::{App, Message};
+use crate::app::{App, Message, Route};
+use crate::i18n::Key;
 
 impl App {
     /// Set the NCM client and sync quality settings
     fn set_ncm_client(&mut self, client: NcmClient) {
-        // Sync quality setting from app settings to client
         client.set_quality(self.core.settings.playback.music_quality.to_api_rate());
         self.core.ncm_client = Some(client);
+    }
+
+    pub(super) fn start_personal_fm_route(&mut self) -> Task<Message> {
+        debug!("Starting Personal FM");
+
+        self.enter_fm_mode();
+
+        if let Some(client) = &self.core.ncm_client {
+            let client = client.clone();
+            let not_logged_in_msg = self.core.locale.get(Key::NotLoggedIn).to_string();
+
+            Task::perform(
+                async move {
+                    match client.client.personal_fm().await {
+                        Ok(songs) if !songs.is_empty() => Some(songs),
+                        Ok(_) => None,
+                        Err(e) => {
+                            error!("Failed to get personal FM: {}", e);
+                            None
+                        }
+                    }
+                },
+                move |songs_opt| {
+                    if let Some(songs) = songs_opt {
+                        Message::AddNcmPlaylist(songs, true)
+                    } else {
+                        Message::ShowToast(not_logged_in_msg)
+                    }
+                },
+            )
+        } else {
+            self.exit_fm_mode();
+            let msg = self.core.locale.get(Key::NotLoggedIn).to_string();
+            Task::done(Message::ShowToast(msg))
+        }
+    }
+
+    pub(super) fn open_ncm_playlist_route(&mut self, playlist_id: u64) -> Task<Message> {
+        let is_daily_recommend = playlist_id == 0;
+
+        if !is_daily_recommend && self.is_viewing_ncm_playlist(playlist_id) {
+            debug!(
+                "Already viewing NCM playlist {}, skipping load",
+                playlist_id
+            );
+            return Task::none();
+        }
+
+        if matches!(
+            self.ui.playlist_page.load_state,
+            crate::app::update::page_loader::PlaylistLoadState::Loading
+        ) {
+            debug!("Playlist already loading, skipping");
+            return Task::none();
+        }
+
+        debug!("Opening NCM playlist: {}", playlist_id);
+        self.reset_playlist_page_state();
+
+        let (name, owner, cover_url) = if is_daily_recommend {
+            let locale = &self.core.locale;
+            (
+                locale
+                    .get(crate::i18n::Key::DiscoverDailyRecommend)
+                    .to_string(),
+                locale
+                    .get(crate::i18n::Key::DiscoverDailyRecommendCreator)
+                    .to_string(),
+                String::new(),
+            )
+        } else {
+            self.ui
+                .home
+                .user_playlists
+                .iter()
+                .find(|p| p.id == playlist_id)
+                .map(|p| (p.name.clone(), p.author.clone(), p.cover_img_url.clone()))
+                .unwrap_or_else(|| ("加载中...".to_string(), String::new(), String::new()))
+        };
+
+        let internal_id = if is_daily_recommend {
+            0
+        } else {
+            -(playlist_id as i64)
+        };
+
+        let skeleton_view = crate::ui::pages::PlaylistView {
+            id: internal_id,
+            name,
+            description: None,
+            cover_path: None,
+            owner,
+            owner_avatar_path: None,
+            creator_id: 0,
+            song_count: 0,
+            total_duration: String::new(),
+            like_count: String::new(),
+            songs: Vec::new(),
+            palette: crate::utils::ColorPalette::default(),
+            is_local: false,
+            is_subscribed: false,
+        };
+
+        self.ui.playlist_page.current = Some(skeleton_view);
+        self.ui.playlist_page.load_state =
+            crate::app::update::page_loader::PlaylistLoadState::Loading;
+
+        let cover_task = if !cover_url.is_empty() {
+            if let Some(client) = &self.core.ncm_client {
+                let client = client.clone();
+                Task::perform(
+                    async move {
+                        crate::utils::download_playlist_cover(&client, playlist_id, &cover_url)
+                            .await
+                            .map(|p| (internal_id, p.to_string_lossy().to_string()))
+                    },
+                    |result| {
+                        if let Some((id, path)) = result {
+                            Message::NcmPlaylistCoverLoaded(id, path)
+                        } else {
+                            Message::NoOp
+                        }
+                    },
+                )
+            } else {
+                Task::none()
+            }
+        } else {
+            Task::none()
+        };
+
+        let api_task = if let Some(client) = &self.core.ncm_client {
+            let client = client.clone();
+            if is_daily_recommend {
+                let locale = &self.core.locale;
+                let name = locale
+                    .get(crate::i18n::Key::DiscoverDailyRecommend)
+                    .to_string();
+                let desc = locale
+                    .get(crate::i18n::Key::DiscoverDailyRecommendDesc)
+                    .to_string();
+                let creator = locale
+                    .get(crate::i18n::Key::DiscoverDailyRecommendCreator)
+                    .to_string();
+                Task::perform(
+                    async move {
+                        match client.client.recommend_songs().await {
+                            Ok(songs) => Some(crate::api::PlayListDetail {
+                                id: 0,
+                                name,
+                                cover_img_url: String::new(),
+                                description: desc,
+                                create_time: 0,
+                                track_update_time: 0,
+                                creator_id: 0,
+                                creator_nickname: creator,
+                                creator_avatar_url: String::new(),
+                                track_count: songs.len() as u64,
+                                subscribed: false,
+                                songs,
+                            }),
+                            Err(e) => {
+                                error!("Failed to load daily recommend: {:?}", e);
+                                None
+                            }
+                        }
+                    },
+                    move |result| {
+                        if let Some(detail) = result {
+                            Message::NcmPlaylistDetailLoaded(detail)
+                        } else {
+                            Message::ShowErrorToast("加载每日推荐失败".to_string())
+                        }
+                    },
+                )
+            } else {
+                Task::perform(
+                    async move {
+                        match client.client.song_list_detail(playlist_id).await {
+                            Ok(detail) => Some(detail),
+                            Err(e) => {
+                                error!("Failed to load NCM playlist detail: {:?}", e);
+                                None
+                            }
+                        }
+                    },
+                    move |result| {
+                        if let Some(detail) = result {
+                            Message::NcmPlaylistDetailLoaded(detail)
+                        } else {
+                            Message::ShowErrorToast("加载歌单失败".to_string())
+                        }
+                    },
+                )
+            }
+        } else {
+            Task::none()
+        };
+
+        Task::batch([cover_task, api_task])
     }
 
     /// Handle NCM-related messages
@@ -553,10 +753,10 @@ impl App {
                 }
             }
 
-            Message::OpenTrendingSongs => {
-                self.ui.active_nav = crate::ui::components::NavItem::Discover;
-                Some(Task::none())
-            }
+            Message::OpenTrendingSongs => Some(self.navigate_to_route(
+                Route::Discover(crate::app::state::DiscoverViewMode::AllHot),
+                true,
+            )),
 
             Message::SongCoverLoaded(song_id, path) => {
                 // Create image handle for instant rendering (no disk IO in render loop)
@@ -930,198 +1130,12 @@ impl App {
             }
 
             Message::OpenNcmPlaylist(playlist_id) => {
-                let playlist_id = *playlist_id;
-                let is_daily_recommend = playlist_id == 0;
-
-                // Check if already viewing this playlist - skip redundant load
-                if !is_daily_recommend && self.is_viewing_ncm_playlist(playlist_id) {
-                    debug!(
-                        "Already viewing NCM playlist {}, skipping load",
-                        playlist_id
-                    );
-                    return Some(Task::none());
+                let route = Route::NcmPlaylist(*playlist_id);
+                if self.ui.current_route != route {
+                    return Some(self.navigate_to_route(route, true));
                 }
 
-                // Check if already loading
-                if matches!(
-                    self.ui.playlist_page.load_state,
-                    crate::app::update::page_loader::PlaylistLoadState::Loading
-                ) {
-                    debug!("Playlist already loading, skipping");
-                    return Some(Task::none());
-                }
-
-                debug!("Opening NCM playlist: {}", playlist_id);
-
-                // Reset playlist search state
-                self.ui.playlist_page.search_expanded = false;
-                self.ui.playlist_page.search_query.clear();
-                self.ui.playlist_page.viewing_recently_played = false;
-
-                // Clear old animation states
-                self.ui.clear_playlist_animations();
-
-                // Get basic info for skeleton display
-                let (name, owner, cover_url) = if is_daily_recommend {
-                    let locale = &self.core.locale;
-                    (
-                        locale
-                            .get(crate::i18n::Key::DiscoverDailyRecommend)
-                            .to_string(),
-                        locale
-                            .get(crate::i18n::Key::DiscoverDailyRecommendCreator)
-                            .to_string(),
-                        String::new(),
-                    )
-                } else {
-                    self.ui
-                        .home
-                        .user_playlists
-                        .iter()
-                        .find(|p| p.id == playlist_id)
-                        .map(|p| (p.name.clone(), p.author.clone(), p.cover_img_url.clone()))
-                        .unwrap_or_else(|| ("加载中...".to_string(), String::new(), String::new()))
-                };
-
-                // Create skeleton PlaylistView immediately for instant UI response
-                let internal_id = if is_daily_recommend {
-                    0
-                } else {
-                    -(playlist_id as i64)
-                };
-
-                let skeleton_view = crate::ui::pages::PlaylistView {
-                    id: internal_id,
-                    name,
-                    description: None,
-                    cover_path: None,
-                    owner,
-                    owner_avatar_path: None,
-                    creator_id: 0,
-                    song_count: 0,
-                    total_duration: String::new(),
-                    like_count: String::new(),
-                    songs: Vec::new(),
-                    palette: crate::utils::ColorPalette::default(),
-                    is_local: false,
-                    is_subscribed: false,
-                };
-
-                // Update state immediately - page will show skeleton
-                self.ui.playlist_page.current = Some(skeleton_view);
-                self.ui.playlist_page.load_state =
-                    crate::app::update::page_loader::PlaylistLoadState::Loading;
-
-                // Close lyrics page if open
-                if self.ui.lyrics.is_open {
-                    self.ui.lyrics.is_open = false;
-                    self.ui.lyrics.animation.stop();
-                }
-
-                // Push to navigation history
-                self.ui
-                    .nav_history
-                    .push(crate::app::state::NavigationEntry::NcmPlaylist(playlist_id));
-
-                // Start cover download immediately if we have the URL
-                let cover_task = if !cover_url.is_empty() {
-                    if let Some(client) = &self.core.ncm_client {
-                        let client = client.clone();
-                        Task::perform(
-                            async move {
-                                crate::utils::download_playlist_cover(
-                                    &client,
-                                    playlist_id,
-                                    &cover_url,
-                                )
-                                .await
-                                .map(|p| (internal_id, p.to_string_lossy().to_string()))
-                            },
-                            |result| {
-                                if let Some((id, path)) = result {
-                                    Message::NcmPlaylistCoverLoaded(id, path)
-                                } else {
-                                    Message::NoOp
-                                }
-                            },
-                        )
-                    } else {
-                        Task::none()
-                    }
-                } else {
-                    Task::none()
-                };
-
-                // Start API request for full details
-                let api_task = if let Some(client) = &self.core.ncm_client {
-                    let client = client.clone();
-                    if is_daily_recommend {
-                        let locale = &self.core.locale;
-                        let name = locale
-                            .get(crate::i18n::Key::DiscoverDailyRecommend)
-                            .to_string();
-                        let desc = locale
-                            .get(crate::i18n::Key::DiscoverDailyRecommendDesc)
-                            .to_string();
-                        let creator = locale
-                            .get(crate::i18n::Key::DiscoverDailyRecommendCreator)
-                            .to_string();
-                        Task::perform(
-                            async move {
-                                match client.client.recommend_songs().await {
-                                    Ok(songs) => Some(crate::api::PlayListDetail {
-                                        id: 0,
-                                        name,
-                                        cover_img_url: String::new(),
-                                        description: desc,
-                                        create_time: 0,
-                                        track_update_time: 0,
-                                        creator_id: 0,
-                                        creator_nickname: creator,
-                                        creator_avatar_url: String::new(),
-                                        track_count: songs.len() as u64,
-                                        subscribed: false,
-                                        songs,
-                                    }),
-                                    Err(e) => {
-                                        error!("Failed to load daily recommend: {:?}", e);
-                                        None
-                                    }
-                                }
-                            },
-                            move |result| {
-                                if let Some(detail) = result {
-                                    Message::NcmPlaylistDetailLoaded(detail)
-                                } else {
-                                    Message::ShowErrorToast("加载每日推荐失败".to_string())
-                                }
-                            },
-                        )
-                    } else {
-                        Task::perform(
-                            async move {
-                                match client.client.song_list_detail(playlist_id).await {
-                                    Ok(detail) => Some(detail),
-                                    Err(e) => {
-                                        error!("Failed to load NCM playlist detail: {:?}", e);
-                                        None
-                                    }
-                                }
-                            },
-                            move |result| {
-                                if let Some(detail) = result {
-                                    Message::NcmPlaylistDetailLoaded(detail)
-                                } else {
-                                    Message::ShowErrorToast("加载歌单失败".to_string())
-                                }
-                            },
-                        )
-                    }
-                } else {
-                    Task::none()
-                };
-
-                return Some(Task::batch([cover_task, api_task]));
+                Some(self.open_ncm_playlist_route(*playlist_id))
             }
 
             Message::NcmPlaylistDetailLoaded(detail) => {

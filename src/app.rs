@@ -12,8 +12,8 @@ use std::sync::Arc;
 use crate::i18n::{Language, Locale};
 pub use message::{IconId, Message, SettingsSection, SidebarId};
 pub use state::{
-    App, CoreState, DiscoverPageState, DiscoverViewMode, HomePageState, LibraryState, SearchPageState, SearchTab, UiState,
-    UserInfo,
+    App, CoreState, DiscoverPageState, DiscoverViewMode, HomePageState, LibraryState, Route,
+    SearchPageState, SearchTab, UiState, UserInfo,
 };
 
 impl App {
@@ -134,7 +134,7 @@ impl App {
         let audio_engine_needs_frames = if power_saving {
             false
         } else {
-            self.ui.active_nav == crate::ui::components::NavItem::AudioEngine && is_playing
+            matches!(self.ui.current_route, Route::AudioEngine) && is_playing
         };
 
         // 5. Keyboard events

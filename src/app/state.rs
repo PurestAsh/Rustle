@@ -181,21 +181,44 @@ impl Default for LibraryState {
     }
 }
 
+/// Unified route model for page rendering and navigation history
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Route {
+    Home,
+    Discover(DiscoverViewMode),
+    Radio,
+    Settings(SettingsSection),
+    AudioEngine,
+    Playlist(i64),
+    NcmPlaylist(u64),
+    RecentlyPlayed,
+    Search {
+        keyword: String,
+        tab: SearchTab,
+        page: u32,
+    },
+}
+
+impl Route {
+    pub fn nav_item(&self) -> Option<NavItem> {
+        match self {
+            Self::Home => Some(NavItem::Home),
+            Self::Discover(_) => Some(NavItem::Discover),
+            Self::Radio => Some(NavItem::Radio),
+            Self::Settings(_) => Some(NavItem::Settings),
+            Self::AudioEngine => Some(NavItem::AudioEngine),
+            Self::Playlist(_)
+            | Self::NcmPlaylist(_)
+            | Self::RecentlyPlayed
+            | Self::Search { .. } => None,
+        }
+    }
+}
+
 /// Navigation history entry
 #[derive(Debug, Clone, PartialEq)]
 pub enum NavigationEntry {
-    /// Navigation page (Home, Discover, Radio, Settings, AudioEngine)
-    Nav(NavItem),
-    /// Discover page with current sub-view
-    Discover(DiscoverViewMode),
-    /// Playlist page with playlist ID
-    Playlist(i64),
-    /// NCM cloud playlist with playlist ID
-    NcmPlaylist(u64),
-    /// Recently played
-    RecentlyPlayed,
-    /// Search results page with keyword
-    Search(String),
+    Route(Route),
 }
 
 /// Navigation history for back/forward functionality
@@ -220,6 +243,18 @@ impl NavigationHistory {
         }
         self.entries.push(entry);
         self.current_index = Some(self.entries.len() - 1);
+    }
+
+    /// Replace the current history entry without changing stack length
+    pub fn replace_current(&mut self, entry: NavigationEntry) {
+        if let Some(idx) = self.current_index {
+            if idx < self.entries.len() {
+                self.entries[idx] = entry;
+                return;
+            }
+        }
+
+        self.push(entry);
     }
 
     /// Go back in history, returns the entry to navigate to
@@ -259,7 +294,7 @@ impl NavigationHistory {
 
 /// UI View State
 pub struct UiState {
-    pub active_nav: NavItem,
+    pub current_route: Route,
     pub search_query: String,
     pub toast: Option<Toast>,
     pub toast_visible: bool,
@@ -299,13 +334,13 @@ pub struct UiState {
 impl UiState {
     pub fn new() -> Self {
         Self {
-            active_nav: NavItem::Home,
+            current_route: Route::Home,
             search_query: String::new(),
             toast: None,
             toast_visible: false,
             nav_history: {
                 let mut history = NavigationHistory::default();
-                history.push(NavigationEntry::Nav(NavItem::Home));
+                history.push(NavigationEntry::Route(Route::Home));
                 history
             },
             active_settings_section: SettingsSection::Account,

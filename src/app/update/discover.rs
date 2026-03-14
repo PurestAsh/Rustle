@@ -8,7 +8,7 @@ use tracing::{debug, error};
 
 use crate::api::SongList;
 use crate::app::message::Message;
-use crate::app::state::App;
+use crate::app::state::{App, Route};
 use crate::i18n::Key;
 
 /// Get a daily seed based on current date
@@ -232,65 +232,18 @@ impl App {
             }
 
             Message::SeeAllRecommended => {
-                debug!("See all recommended playlists");
-                self.ui.active_nav = crate::ui::components::NavItem::Discover;
-                self.ui.playlist_page.current = None;
-                self.ui.playlist_page.viewing_recently_played = false;
-                self.ui.discover.view_mode = crate::app::state::DiscoverViewMode::AllRecommended;
-                self.ui.nav_history.push(crate::app::state::NavigationEntry::Discover(
-                    crate::app::state::DiscoverViewMode::AllRecommended,
-                ));
-                Some(Task::none())
+                let route = Route::Discover(crate::app::state::DiscoverViewMode::AllRecommended);
+                Some(self.navigate_to_route(route, true))
             }
 
             Message::SeeAllHot => {
-                debug!("See all hot playlists");
-                self.ui.active_nav = crate::ui::components::NavItem::Discover;
-                self.ui.playlist_page.current = None;
-                self.ui.playlist_page.viewing_recently_played = false;
-                self.ui.discover.view_mode = crate::app::state::DiscoverViewMode::AllHot;
-                self.ui.nav_history.push(crate::app::state::NavigationEntry::Discover(
-                    crate::app::state::DiscoverViewMode::AllHot,
-                ));
-                // Load more if we don't have many yet
-                if self.ui.discover.hot_playlists.len() < 30 && self.ui.discover.hot_has_more {
-                    return Some(Task::done(Message::LoadMoreHotPlaylists));
-                }
-                Some(Task::none())
-            }
-
-            Message::StartPersonalFm => {
-                debug!("Starting Personal FM");
-
-                self.enter_fm_mode();
-
-                if let Some(client) = &self.core.ncm_client {
-                    let client = client.clone();
-                    let not_logged_in_msg = self.core.locale.get(Key::NotLoggedIn).to_string();
-
-                    return Some(Task::perform(
-                        async move {
-                            match client.client.personal_fm().await {
-                                Ok(songs) if !songs.is_empty() => Some(songs),
-                                Ok(_) => None,
-                                Err(e) => {
-                                    error!("Failed to get personal FM: {}", e);
-                                    None
-                                }
-                            }
-                        },
-                        move |songs_opt| {
-                            if let Some(songs) = songs_opt {
-                                Message::AddNcmPlaylist(songs, true)
-                            } else {
-                                Message::ShowToast(not_logged_in_msg)
-                            }
-                        },
-                    ));
+                let route = Route::Discover(crate::app::state::DiscoverViewMode::AllHot);
+                let needs_more = self.ui.discover.hot_playlists.len() < 30 && self.ui.discover.hot_has_more;
+                let nav_task = self.navigate_to_route(route, true);
+                if needs_more {
+                    Some(Task::batch([nav_task, Task::done(Message::LoadMoreHotPlaylists)]))
                 } else {
-                    self.exit_fm_mode();
-                    let msg = self.core.locale.get(Key::NotLoggedIn).to_string();
-                    return Some(Task::done(Message::ShowToast(msg)));
+                    Some(nav_task)
                 }
             }
 

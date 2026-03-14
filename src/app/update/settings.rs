@@ -2,7 +2,7 @@
 
 use crate::app::SettingsSection;
 use crate::app::message::Message;
-use crate::app::state::App;
+use crate::app::state::{App, Route};
 use crate::cache;
 use crate::features::keybindings::{KeyBinding, KeyCode, ModifierSet};
 use iced::Task;
@@ -144,6 +144,27 @@ fn key_to_keycode(key: &Key) -> Option<KeyCode> {
 }
 
 impl App {
+    pub(super) fn settings_section_scroll_position(&self, section: SettingsSection) -> f32 {
+        get_section_scroll_position(section, self.core.is_logged_in)
+    }
+
+    pub(super) fn sync_settings_section_route(&mut self, section: SettingsSection) {
+        self.ui.active_settings_section = section;
+        if matches!(self.ui.current_route, Route::Settings(_)) {
+            self.ui.current_route = Route::Settings(section);
+            self.ui
+                .nav_history
+                .replace_current(crate::app::state::NavigationEntry::Route(
+                    self.ui.current_route.clone(),
+                ));
+        }
+    }
+
+    pub(super) fn refresh_cache_stats(&mut self) {
+        let stats = cache::calculate_cache_stats();
+        self.ui.cache_stats = Some(stats);
+    }
+
     /// Handle settings-related messages
     pub fn handle_settings(&mut self, message: &Message) -> Option<Task<Message>> {
         match message {
@@ -265,8 +286,7 @@ impl App {
                 Some(Task::perform(async { Message::RefreshCacheStats }, |m| m))
             }
             Message::RefreshCacheStats => {
-                let stats = cache::calculate_cache_stats();
-                self.ui.cache_stats = Some(stats);
+                self.refresh_cache_stats();
                 Some(Task::none())
             }
             Message::EnforceCacheLimit => {
@@ -385,7 +405,7 @@ impl App {
                 Some(Task::none())
             }
             Message::ScrollToSection(section) => {
-                self.ui.active_settings_section = *section;
+                self.sync_settings_section_route(*section);
                 // Get target scroll position for section based on login state
                 let is_logged_in = self.core.is_logged_in;
                 let target_y = get_section_scroll_position(*section, is_logged_in);
@@ -400,8 +420,8 @@ impl App {
             Message::SettingsScrolled(y_offset) => {
                 // Update active section based on scroll position and login state
                 let is_logged_in = self.core.is_logged_in;
-                self.ui.active_settings_section =
-                    get_section_from_scroll_position(*y_offset, is_logged_in);
+                let section = get_section_from_scroll_position(*y_offset, is_logged_in);
+                self.sync_settings_section_route(section);
                 Some(Task::none())
             }
             Message::StartEditingKeybinding(action) => {
