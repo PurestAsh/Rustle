@@ -27,10 +27,10 @@ use crate::features::lyrics::engine::{
     types::{ComputedLineStyle, LyricLineData},
 };
 use iced::Rectangle;
+use iced::wgpu;
 use iced::widget::shader::{Pipeline, Primitive};
 use std::collections::HashSet;
 use std::sync::Arc;
-use wgpu;
 
 /// iced Pipeline 实现，管理 GPU 管线生命周期
 pub struct LyricsEnginePipeline {
@@ -585,8 +585,6 @@ impl Primitive for LyricsEnginePrimitive {
     fn render(
         &self,
         pipeline: &Self::Pipeline,
-        device: &wgpu::Device,
-        queue: &wgpu::Queue,
         encoder: &mut wgpu::CommandEncoder,
         target: &wgpu::TextureView,
         clip_bounds: &Rectangle<u32>,
@@ -611,8 +609,6 @@ impl Primitive for LyricsEnginePrimitive {
             // 每行歌词独立渲染和模糊，避免不同行之间的模糊混合
             if let Some(ref params) = pipeline.cached_render_params {
                 gpu_pipeline.render_with_per_line_blur(
-                    device,
-                    queue,
                     encoder,
                     target,
                     clip_bounds,
@@ -639,6 +635,7 @@ impl Primitive for LyricsEnginePrimitive {
             depth_stencil_attachment: None,
             timestamp_writes: None,
             occlusion_query_set: None,
+            multiview_mask: None,
         });
 
         // Set scissor rect to clip bounds

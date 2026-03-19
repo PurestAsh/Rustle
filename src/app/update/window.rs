@@ -4,11 +4,92 @@
 use iced::Task;
 
 use crate::app::message::Message;
-use crate::app::state::App;
+use crate::app::state::{App, WindowVisibilityState};
 use crate::features::CloseBehavior;
 use crate::platform::window;
 
 impl App {
+    fn is_window_hidden(&self) -> bool {
+        self.core.is_window_hidden()
+    }
+
+    fn is_window_visible_or_showing(&self) -> bool {
+        matches!(
+            self.core.window_visibility,
+            WindowVisibilityState::Visible | WindowVisibilityState::Showing
+        )
+    }
+
+    fn current_visible_mode(&self) -> iced::window::Mode {
+        if self.is_window_visible_or_showing() {
+            self.core.window_restore_mode
+        } else {
+            iced::window::Mode::Hidden
+        }
+    }
+
+    fn begin_hide_window(&mut self) -> Task<Message> {
+        if self.core.window_operation_pending
+            || self.core.window_visibility == WindowVisibilityState::Hidden
+            || self.core.window_visibility == WindowVisibilityState::Hiding
+        {
+            return Task::none();
+        }
+
+        tracing::info!(
+            backend = if window::is_wayland_backend() { "wayland" } else { "x11" },
+            "Hiding window to tray"
+        );
+
+        self.core.window_visibility = WindowVisibilityState::Hiding;
+        self.core.window_operation_pending = true;
+
+        window::set_window_mode(iced::window::Mode::Hidden)
+            .chain(Task::done(Message::WindowOperationComplete))
+    }
+
+    fn begin_show_window(&mut self) -> Task<Message> {
+        if self.core.window_operation_pending
+            || self.core.window_visibility == WindowVisibilityState::Visible
+            || self.core.window_visibility == WindowVisibilityState::Showing
+        {
+            return Task::none();
+        }
+
+        tracing::info!(
+            backend = if window::is_wayland_backend() { "wayland" } else { "x11" },
+            "Showing window"
+        );
+
+        self.core.window_visibility = WindowVisibilityState::Showing;
+        self.core.window_operation_pending = true;
+
+        if window::is_wayland_backend() {
+            window::set_window_mode(self.core.window_restore_mode)
+        } else {
+            window::set_window_mode(self.core.window_restore_mode)
+                .chain(Task::done(Message::WindowOperationComplete))
+        }
+    }
+
+    fn toggle_window_task(&mut self) -> Task<Message> {
+        if self.is_window_hidden() {
+            self.begin_show_window()
+        } else {
+            self.begin_hide_window()
+        }
+    }
+
+    fn begin_show_or_focus_window(&mut self) -> Task<Message> {
+        if self.is_window_hidden() {
+            self.begin_show_window()
+        } else if self.core.window_focused {
+            Task::none()
+        } else {
+            window::focus_window()
+        }
+    }
+
     /// Handle window-related messages
     pub fn handle_window(&mut self, message: &Message) -> Option<Task<Message>> {
         match message {
@@ -22,9 +103,7 @@ impl App {
                         return Some(iced::exit());
                     }
                     CloseBehavior::MinimizeToTray => {
-                        tracing::info!("Hiding window to tray");
-                        self.core.window_hidden = true;
-                        return Some(window::hide_window());
+                        return Some(self.begin_hide_window());
                     }
                 }
                 Some(Task::none())
@@ -45,9 +124,7 @@ impl App {
                 }
                 self.ui.dialogs.exit_open = false;
                 self.ui.dialogs.exit_animation.stop();
-                tracing::info!("Hiding window to tray");
-                self.core.window_hidden = true;
-                Some(window::hide_window())
+                Some(self.begin_hide_window())
             }
 
             Message::CancelExit => {
@@ -61,26 +138,38 @@ impl App {
                 Some(Task::none())
             }
 
-            Message::ToggleWindow => {
-                self.core.window_hidden = !self.core.window_hidden;
-                let visible = !self.core.window_hidden;
-                tracing::info!("Setting window visible: {}", visible);
+            Message::ToggleWindow => Some(self.toggle_window_task()),
 
-                if visible {
-                    Some(window::show_window())
+            Message::ShowWindow => Some(self.begin_show_window()),
+
+            Message::FocusWindow => Some(window::focus_window()),
+
+            Message::ShowOrFocusWindow => Some(self.begin_show_or_focus_window()),
+
+            Message::WindowShown => {
+                if self.core.window_visibility == WindowVisibilityState::Showing
+                    && self.core.window_operation_pending
+                    && window::is_wayland_backend()
+                {
+                    Some(Task::done(Message::WindowOperationComplete))
                 } else {
-                    Some(window::hide_window())
+                    Some(Task::none())
                 }
             }
 
-            Message::ShowWindow => {
-                self.core.window_hidden = false;
-                tracing::info!("Showing window");
-                Some(window::show_window())
+            Message::WindowFocused => {
+                self.core.window_focused = true;
+                Some(Task::none())
+            }
+
+            Message::WindowUnfocused => {
+                self.core.window_focused = false;
+                Some(Task::none())
             }
 
             Message::WindowOperationComplete => {
                 self.core.window_operation_pending = false;
+                self.core.window_visibility = finalize_window_visibility(self.current_visible_mode());
                 Some(Task::none())
             }
 
@@ -97,5 +186,35 @@ impl App {
 
             _ => None,
         }
+    }
+}
+
+fn finalize_window_visibility(window_mode: iced::window::Mode) -> WindowVisibilityState {
+    if window_mode == iced::window::Mode::Hidden {
+        WindowVisibilityState::Hidden
+    } else {
+        WindowVisibilityState::Visible
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::finalize_window_visibility;
+    use crate::app::state::WindowVisibilityState;
+
+    #[test]
+    fn finalize_window_operation_visibility() {
+        assert_eq!(
+            finalize_window_visibility(iced::window::Mode::Hidden),
+            WindowVisibilityState::Hidden,
+        );
+        assert_eq!(
+            finalize_window_visibility(iced::window::Mode::Windowed),
+            WindowVisibilityState::Visible,
+        );
+        assert_eq!(
+            finalize_window_visibility(iced::window::Mode::Fullscreen),
+            WindowVisibilityState::Visible,
+        );
     }
 }

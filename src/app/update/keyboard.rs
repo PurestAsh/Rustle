@@ -100,14 +100,20 @@ impl App {
                 self.ui.queue_visible = !self.ui.queue_visible;
             }
             Action::ToggleFullscreen => {
-                // Toggle window fullscreen mode
-                self.core.is_fullscreen = !self.core.is_fullscreen;
-                let mode = if self.core.is_fullscreen {
-                    iced::window::Mode::Fullscreen
-                } else {
+                let mode = if self.core.window_restore_mode == iced::window::Mode::Fullscreen {
                     iced::window::Mode::Windowed
+                } else {
+                    iced::window::Mode::Fullscreen
                 };
-                return iced::window::latest().and_then(move |id| iced::window::set_mode(id, mode));
+                self.core.window_restore_mode = mode;
+
+                if self.core.is_window_hidden() {
+                    return Task::none();
+                }
+
+                self.core.window_operation_pending = true;
+                return crate::platform::window::set_window_mode(mode)
+                    .chain(Task::done(Message::WindowOperationComplete));
             }
         }
         Task::none()

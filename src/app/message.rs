@@ -369,8 +369,18 @@ pub enum Message {
     MprisCommand(crate::platform::media_controls::MediaCommand),
     /// Show window from tray
     ShowWindow,
+    /// Focus the existing visible window
+    FocusWindow,
+    /// Show hidden window or focus the existing visible window
+    ShowOrFocusWindow,
     /// Toggle window visibility
     ToggleWindow,
+    /// Window finished showing and is ready to render
+    WindowShown,
+    /// Window gained focus
+    WindowFocused,
+    /// Window lost focus
+    WindowUnfocused,
     /// Window operation completed (for debouncing)
     WindowOperationComplete,
 
@@ -813,7 +823,12 @@ impl std::fmt::Debug for Message {
             Self::MprisCommand(c) => simple!("MprisCommand", "{:?}", c),
             Self::MprisStartedWithHandle(_, _) => simple!("MprisStartedWithHandle"),
             Self::ShowWindow => simple!("ShowWindow"),
+            Self::FocusWindow => simple!("FocusWindow"),
+            Self::ShowOrFocusWindow => simple!("ShowOrFocusWindow"),
             Self::ToggleWindow => simple!("ToggleWindow"),
+            Self::WindowShown => simple!("WindowShown"),
+            Self::WindowFocused => simple!("WindowFocused"),
+            Self::WindowUnfocused => simple!("WindowUnfocused"),
             Self::WindowOperationComplete => simple!("WindowOperationComplete"),
 
             // NCM Login

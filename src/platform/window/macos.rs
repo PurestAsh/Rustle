@@ -2,17 +2,25 @@
 
 use iced::Task;
 
-/// Show the window and bring it to front (macOS)
-pub fn show_window<Message: Send + 'static>() -> Task<Message> {
-    iced::window::latest().and_then(|id| {
-        Task::batch([
-            iced::window::set_visible(id, true),
+pub fn set_window_mode<Message: Send + 'static>(mode: iced::window::Mode) -> Task<Message> {
+    iced::window::latest().and_then(move |id| match mode {
+        iced::window::Mode::Hidden => iced::window::set_mode(id, iced::window::Mode::Hidden),
+        iced::window::Mode::Windowed => Task::batch([
+            iced::window::set_mode(id, iced::window::Mode::Windowed),
             iced::window::gain_focus(id),
-        ])
+        ]),
+        iced::window::Mode::Fullscreen => Task::batch([
+            iced::window::set_mode(id, iced::window::Mode::Fullscreen),
+            iced::window::gain_focus(id),
+        ]),
     })
 }
 
-/// Hide the window (macOS)
-pub fn hide_window<Message: Send + 'static>() -> Task<Message> {
-    iced::window::latest().and_then(|id| iced::window::set_visible(id, false))
+pub fn focus_window<Message: Send + 'static>() -> Task<Message> {
+    iced::window::latest().and_then(|id| {
+        Task::batch([
+            iced::window::minimize(id, false),
+            iced::window::gain_focus(id),
+        ])
+    })
 }

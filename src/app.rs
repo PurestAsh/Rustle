@@ -138,7 +138,8 @@ impl App {
         };
 
         // 5. Keyboard events
-        let keyboard_sub = if !self.core.window_hidden {
+        let window_hidden = self.core.is_window_hidden();
+        let keyboard_sub = if !window_hidden {
             keyboard::listen().filter_map(|event| match event {
                 keyboard::Event::KeyPressed { key, modifiers, .. } => {
                     Some(Message::KeyPressed(key, modifiers))
@@ -151,8 +152,6 @@ impl App {
 
         // 6. Window events
         let close_request_sub = iced::window::close_requests().map(|_id| Message::RequestClose);
-        let close_event_sub =
-            iced::window::close_events().map(|_id| Message::WindowOperationComplete);
 
         // 7. Animation subscription (165fps)
         let animation_sub = if has_animations || lyrics_needs_frames || audio_engine_needs_frames {
@@ -171,18 +170,24 @@ impl App {
 
         // 9. Carousel auto-advance (5s)
         let carousel_sub =
-            if !power_saving && !self.ui.home.banners.is_empty() && !self.core.window_hidden {
+            if !power_saving && !self.ui.home.banners.is_empty() && !window_hidden {
                 iced::time::every(Duration::from_secs(5)).map(|_| Message::CarouselTick)
             } else {
                 iced::Subscription::none()
             };
 
-        // 10. Window resize
+        // 10. Window resize + shown/focus events
         let resize_sub =
             iced::window::resize_events().map(|(_id, size)| Message::WindowResized(size));
+        let shown_sub = iced::window::shown_events().map(|_id| Message::WindowShown);
+        let focus_sub = iced::window::events().filter_map(|(_id, event)| match event {
+            iced::window::Event::Focused => Some(Message::WindowFocused),
+            iced::window::Event::Unfocused => Some(Message::WindowUnfocused),
+            _ => None,
+        });
 
         // 11. Mouse events for window dragging and sidebar resize
-        let mouse_sub = if !self.core.window_hidden {
+        let mouse_sub = if !window_hidden {
             iced::event::listen().filter_map(|event| match event {
                 iced::Event::Mouse(iced::mouse::Event::ButtonPressed(
                     iced::mouse::Button::Left,
@@ -206,11 +211,12 @@ impl App {
         iced::Subscription::batch([
             keyboard_sub,
             close_request_sub,
-            close_event_sub,
             animation_sub, // Animation updates (vsync rate)
             playback_sub,  // Playback monitoring (100ms intervals)
             carousel_sub,
             resize_sub,
+            shown_sub,
+            focus_sub,
             mouse_sub,
         ])
     }

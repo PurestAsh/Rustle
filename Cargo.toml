@@ -11,7 +11,7 @@ keywords = ["music", "player", "netease", "iced", "gui"]
 categories = ["multimedia::audio"]
 
 [dependencies]
-iced = { version = "0.14", features = ["tokio", "advanced", "canvas", "image", "svg", "debug"] }
+iced = { version = "=0.15.0-dev", features = ["tokio", "advanced", "canvas", "image", "svg", "debug"] }
 iced_aw = { version = "0.13.1", features = ["full"] }
 iced_anim = "0.3.1"
 wgpu = "27.0.1"
@@ -73,6 +73,10 @@ chrono = { version = "0.4.44", default-features = false, features = ["clock"] }
 mpris-server = "0.9.0"
 ksni = { version = "0.3.3", default-features = false, features = ["tokio"] }
 
+[patch.crates-io]
+iced = { git = "https://github.com/Fei-xiangShi/iced.git", rev = "14e19572111916a4e8e328c5e8bda7ce3b114c65" }
+smithay-client-toolkit = { git = "https://github.com/Fei-xiangShi/client-toolkit.git", rev = "95e830598b86da7104a63dbe81b8c7cdf4f9431f" }
+
 [target.'cfg(any(target_os = "windows", target_os = "macos"))'.dependencies]
 tray-icon = "0.21.3"
 souvlaki = "0.8.3"
@@ -85,15 +89,3 @@ lto = true
 codegen-units = 1
 panic = "abort"
 strip = true
-
-[patch.crates-io]
-winit = { git = "https://github.com/ArcticFoxNetwork/winit", branch = "wayland-visibility" }
-iced = { git = "https://github.com/ArcticFoxNetwork/iced", branch = "wayland-visibility" }
-iced_runtime = { git = "https://github.com/ArcticFoxNetwork/iced", branch = "wayland-visibility" }
-iced_winit = { git = "https://github.com/ArcticFoxNetwork/iced", branch = "wayland-visibility" }
-iced_core = { git = "https://github.com/ArcticFoxNetwork/iced", branch = "wayland-visibility" }
-iced_futures = { git = "https://github.com/ArcticFoxNetwork/iced", branch = "wayland-visibility" }
-iced_graphics = { git = "https://github.com/ArcticFoxNetwork/iced", branch = "wayland-visibility" }
-iced_widget = { git = "https://github.com/ArcticFoxNetwork/iced", branch = "wayland-visibility" }
-iced_renderer = { git = "https://github.com/ArcticFoxNetwork/iced", branch = "wayland-visibility" }
-iced_wgpu = { git = "https://github.com/ArcticFoxNetwork/iced", branch = "wayland-visibility" }

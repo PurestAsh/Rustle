@@ -586,12 +586,14 @@ pub fn settings_pick_list(theme: &Theme, status: pick_list::Status) -> pick_list
             pick_list::Status::Active => Color::from_rgba(1.0, 1.0, 1.0, 0.08),
             pick_list::Status::Hovered => Color::from_rgba(1.0, 1.0, 1.0, 0.12),
             pick_list::Status::Opened { .. } => Color::from_rgba(1.0, 1.0, 1.0, 0.15),
+            pick_list::Status::Disabled => Color::from_rgba(1.0, 1.0, 1.0, 0.04),
         }
     } else {
         match status {
             pick_list::Status::Active => Color::from_rgba(0.0, 0.0, 0.0, 0.05),
             pick_list::Status::Hovered => Color::from_rgba(0.0, 0.0, 0.0, 0.08),
             pick_list::Status::Opened { .. } => Color::from_rgba(0.0, 0.0, 0.0, 0.1),
+            pick_list::Status::Disabled => Color::from_rgba(0.0, 0.0, 0.0, 0.03),
         }
     };
 

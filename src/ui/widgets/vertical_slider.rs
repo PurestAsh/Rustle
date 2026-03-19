@@ -5,7 +5,7 @@
 use iced::advanced::layout::{self, Layout};
 use iced::advanced::renderer;
 use iced::advanced::widget::{self, Widget};
-use iced::advanced::{Clipboard, Shell};
+use iced::advanced::Shell;
 use iced::event::Event;
 use iced::mouse;
 use iced::{Background, Border, Color, Element, Length, Rectangle, Size, Theme};
@@ -108,7 +108,6 @@ where
         layout: Layout<'_>,
         cursor: mouse::Cursor,
         _renderer: &Renderer,
-        _clipboard: &mut dyn Clipboard,
         shell: &mut Shell<'_, Message>,
         _viewport: &Rectangle,
     ) {

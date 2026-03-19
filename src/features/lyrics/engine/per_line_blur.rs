@@ -15,7 +15,8 @@
 //! - 纹理池（用于合成）
 //! - 合成管线（用于层叠渲染）
 
-use wgpu::{Device, TextureFormat};
+use iced::wgpu;
+use iced::wgpu::{Device, TextureFormat};
 
 /// 单行渲染纹理
 struct LineTexture {
@@ -129,7 +130,7 @@ impl PerLineBlurRenderer {
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("Per-Line Composite Pipeline Layout"),
                 bind_group_layouts: &[&composite_bind_group_layout],
-                push_constant_ranges: &[],
+                immediate_size: 0,
             });
 
         let composite_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
@@ -162,7 +163,7 @@ impl PerLineBlurRenderer {
             },
             depth_stencil: None,
             multisample: wgpu::MultisampleState::default(),
-            multiview: None,
+            multiview_mask: None,
             cache: None,
         });
 
@@ -173,7 +174,7 @@ impl PerLineBlurRenderer {
             address_mode_w: wgpu::AddressMode::ClampToEdge,
             mag_filter: wgpu::FilterMode::Linear,
             min_filter: wgpu::FilterMode::Linear,
-            mipmap_filter: wgpu::FilterMode::Linear,
+            mipmap_filter: wgpu::MipmapFilterMode::Linear,
             ..Default::default()
         });
 
@@ -259,8 +260,6 @@ impl PerLineBlurRenderer {
     #[allow(clippy::too_many_arguments)]
     pub fn render_with_blur(
         &mut self,
-        _device: &Device,
-        _queue: &wgpu::Queue,
         encoder: &mut wgpu::CommandEncoder,
         target: &wgpu::TextureView,
         clip_bounds: &iced::Rectangle<u32>,
@@ -306,6 +305,7 @@ impl PerLineBlurRenderer {
             depth_stencil_attachment: None,
             timestamp_writes: None,
             occlusion_query_set: None,
+            multiview_mask: None,
         });
 
         render_pass.set_scissor_rect(

@@ -115,8 +115,7 @@ impl App {
             }
 
             MediaCommand::Raise => {
-                // Show window if hidden
-                if self.core.window_hidden {
+                if self.core.is_window_hidden() {
                     Some(self.update(Message::ShowWindow))
                 } else {
                     Some(Task::none())

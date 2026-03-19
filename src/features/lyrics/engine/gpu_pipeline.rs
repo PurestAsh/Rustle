@@ -26,9 +26,10 @@
 
 use bytemuck::{Pod, Zeroable};
 use cosmic_text::FontSystem;
+use iced::wgpu;
 use parking_lot::{Mutex, RwLock};
 use std::sync::Arc;
-use wgpu::{Device, Queue, TextureFormat};
+use iced::wgpu::{Device, Queue, TextureFormat};
 
 use super::CachedShapedLine;
 use super::interlude_dots::InterludeDots;
@@ -300,7 +301,7 @@ impl LyricsGpuPipeline {
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("Lyrics Pipeline Layout"),
             bind_group_layouts: &[&bind_group_layout],
-            push_constant_ranges: &[],
+            immediate_size: 0,
         });
 
         // Load SDF shader
@@ -340,7 +341,7 @@ impl LyricsGpuPipeline {
             },
             depth_stencil: None,
             multisample: wgpu::MultisampleState::default(),
-            multiview: None,
+            multiview_mask: None,
             cache: None,
         });
 
@@ -379,7 +380,7 @@ impl LyricsGpuPipeline {
             },
             depth_stencil: None,
             multisample: wgpu::MultisampleState::default(),
-            multiview: None,
+            multiview_mask: None,
             cache: None,
         });
 
@@ -517,7 +518,7 @@ impl LyricsGpuPipeline {
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("Interlude Dots Pipeline Layout"),
             bind_group_layouts: &[&bind_group_layout],
-            push_constant_ranges: &[],
+            immediate_size: 0,
         });
 
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
@@ -555,7 +556,7 @@ impl LyricsGpuPipeline {
             },
             depth_stencil: None,
             multisample: wgpu::MultisampleState::default(),
-            multiview: None,
+            multiview_mask: None,
             cache: None,
         });
 
@@ -684,7 +685,7 @@ impl LyricsGpuPipeline {
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("Composite Pipeline Layout"),
             bind_group_layouts: &[&bind_group_layout],
-            push_constant_ranges: &[],
+            immediate_size: 0,
         });
 
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
@@ -723,7 +724,7 @@ impl LyricsGpuPipeline {
             },
             depth_stencil: None,
             multisample: wgpu::MultisampleState::default(),
-            multiview: None,
+            multiview_mask: None,
             cache: None,
         });
 
@@ -741,7 +742,7 @@ impl LyricsGpuPipeline {
             address_mode_w: wgpu::AddressMode::ClampToEdge,
             mag_filter: wgpu::FilterMode::Linear,
             min_filter: wgpu::FilterMode::Linear,
-            mipmap_filter: wgpu::FilterMode::Linear,
+            mipmap_filter: wgpu::MipmapFilterMode::Linear,
             ..Default::default()
         });
 
@@ -1914,7 +1915,7 @@ impl LyricsGpuPipeline {
             address_mode_w: wgpu::AddressMode::ClampToEdge,
             mag_filter: wgpu::FilterMode::Linear,
             min_filter: wgpu::FilterMode::Linear,
-            mipmap_filter: wgpu::FilterMode::Linear,
+            mipmap_filter: wgpu::MipmapFilterMode::Linear,
             ..Default::default()
         });
 
@@ -2080,8 +2081,6 @@ impl LyricsGpuPipeline {
     /// 因为每行的模糊是独立的，不会与其他行混合。
     pub fn render_with_per_line_blur(
         &self,
-        device: &Device,
-        queue: &Queue,
         encoder: &mut wgpu::CommandEncoder,
         target: &wgpu::TextureView,
         clip_bounds: &iced::Rectangle<u32>,
@@ -2110,8 +2109,6 @@ impl LyricsGpuPipeline {
 
         // 使用逐行模糊渲染器
         self.per_line_blur.write().render_with_blur(
-            device,
-            queue,
             encoder,
             target,
             clip_bounds,
@@ -2138,6 +2135,7 @@ impl LyricsGpuPipeline {
                 depth_stencil_attachment: None,
                 timestamp_writes: None,
                 occlusion_query_set: None,
+                multiview_mask: None,
             });
 
             render_pass.set_scissor_rect(

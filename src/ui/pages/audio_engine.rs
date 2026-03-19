@@ -289,7 +289,8 @@ fn volume_meter_view(label: &'static str, level: f32, height: f32) -> Element<'s
 fn preset_picker(current: EqualizerPreset) -> Element<'static, Message> {
     let presets: Vec<EqualizerPreset> = EqualizerPreset::all().to_vec();
 
-    pick_list(presets, Some(current), Message::UpdateEqualizerPreset)
+    pick_list(Some(current), presets, |preset| preset.to_string())
+        .on_select(Message::UpdateEqualizerPreset)
         .text_size(14)
         .padding([8, 16])
         .style(theme::settings_pick_list)
@@ -322,9 +323,8 @@ fn spectrum_mode_picker(bars_mode: bool) -> Element<'static, Message> {
         SpectrumMode::Line
     };
 
-    pick_list(modes, Some(current), |mode| {
-        Message::UpdateSpectrumBarsMode(mode == SpectrumMode::Bars)
-    })
+    pick_list(Some(current), modes, |mode| mode.to_string())
+        .on_select(|mode| Message::UpdateSpectrumBarsMode(mode == SpectrumMode::Bars))
     .text_size(14)
     .padding([8, 16])
     .style(theme::settings_pick_list)

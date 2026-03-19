@@ -987,3 +987,4 @@ impl App {
         self.update_background_async(song)
     }
 }
+

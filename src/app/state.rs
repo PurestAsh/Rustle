@@ -52,14 +52,31 @@ pub struct CoreState {
     pub mpris_handle: Option<MediaHandle>,
     pub mpris_rx:
         Option<Arc<tokio::sync::Mutex<tokio::sync::mpsc::UnboundedReceiver<MediaCommand>>>>,
-    pub window_hidden: bool,
+    pub window_restore_mode: iced::window::Mode,
+    pub window_visibility: WindowVisibilityState,
+    pub window_focused: bool,
     pub window_operation_pending: bool,
-    pub is_fullscreen: bool,
     /// Current mouse Y position for drag area detection
     pub mouse_position: iced::Point,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum WindowVisibilityState {
+    Visible,
+    Hiding,
+    Hidden,
+    Showing,
+}
+
 impl CoreState {
+    pub fn is_window_visible(&self) -> bool {
+        self.window_visibility == WindowVisibilityState::Visible
+    }
+
+    pub fn is_window_hidden(&self) -> bool {
+        !self.is_window_visible()
+    }
+
     /// Initialize core services with loaded settings
     pub fn new(
         settings: crate::features::Settings,
@@ -81,9 +98,10 @@ impl CoreState {
             cover_cache: None,
             mpris_handle: None,
             mpris_rx: None,
-            window_hidden: false,
+            window_restore_mode: iced::window::Mode::Windowed,
+            window_visibility: WindowVisibilityState::Visible,
+            window_focused: true,
             window_operation_pending: false,
-            is_fullscreen: false,
             mouse_position: iced::Point::ORIGIN,
         }
     }

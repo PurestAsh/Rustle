@@ -1088,7 +1088,8 @@ where
     T: ToString + PartialEq + Clone + 'a,
     F: Fn(T) -> Message + 'a,
 {
-    pick_list(options, selected, on_selected)
+    pick_list(selected, options, |value| value.to_string())
+        .on_select(on_selected)
         .style(theme::settings_pick_list)
         .menu_style(theme::settings_pick_list_menu)
         .padding([8, 12])

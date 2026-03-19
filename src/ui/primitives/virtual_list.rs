@@ -21,7 +21,7 @@
 use iced::advanced::layout::{self, Layout};
 use iced::advanced::renderer;
 use iced::advanced::widget::{self, Tree, Widget};
-use iced::advanced::{Clipboard, Shell};
+use iced::advanced::Shell;
 use iced::mouse::{self, Cursor};
 use iced::{Color, Element, Event, Length, Point, Rectangle, Size};
 use std::cell::RefCell;
@@ -421,7 +421,6 @@ where
         layout: Layout<'_>,
         cursor: Cursor,
         renderer: &Renderer,
-        clipboard: &mut dyn Clipboard,
         shell: &mut Shell<'_, Message>,
         viewport: &Rectangle,
     ) {
@@ -594,7 +593,6 @@ where
                                 child_layout,
                                 cursor,
                                 renderer,
-                                clipboard,
                                 shell,
                                 viewport,
                             );
@@ -642,7 +640,6 @@ where
                                 child_layout,
                                 cursor,
                                 renderer,
-                                clipboard,
                                 shell,
                                 viewport,
                             );
@@ -666,7 +663,6 @@ where
                             child_layout,
                             cursor,
                             renderer,
-                            clipboard,
                             shell,
                             viewport,
                         );
@@ -674,7 +670,7 @@ where
                 }
             }
 
-            Event::Window(_) | Event::InputMethod(_) => {}
+            Event::Window(_) | Event::InputMethod(_) | Event::Clipboard(_) => {}
         }
     }
 

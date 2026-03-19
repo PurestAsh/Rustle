@@ -9,7 +9,7 @@
 use iced::advanced::layout;
 use iced::advanced::renderer;
 use iced::advanced::widget::tree::{self, Tree};
-use iced::advanced::{Clipboard, Layout, Shell, Widget};
+use iced::advanced::{Layout, Shell, Widget};
 use iced::border::Border;
 use iced::keyboard;
 use iced::keyboard::key::{self, Key};
@@ -129,7 +129,6 @@ where
         layout: Layout<'_>,
         cursor: mouse::Cursor,
         _renderer: &Renderer,
-        _clipboard: &mut dyn Clipboard,
         shell: &mut Shell<'_, Message>,
         _viewport: &Rectangle,
     ) {

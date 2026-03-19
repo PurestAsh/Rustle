@@ -12,35 +12,45 @@ mod macos;
 #[cfg(target_os = "windows")]
 mod windows;
 
-/// Show the window and bring it to front
-pub fn show_window<Message: Send + 'static>() -> Task<Message> {
+pub fn set_window_mode<Message: Send + 'static>(mode: iced::window::Mode) -> Task<Message> {
     #[cfg(target_os = "windows")]
     {
-        windows::show_window()
+        windows::set_window_mode(mode)
     }
     #[cfg(target_os = "linux")]
     {
-        linux::show_window()
+        linux::set_window_mode(mode)
     }
     #[cfg(target_os = "macos")]
     {
-        macos::show_window()
+        macos::set_window_mode(mode)
     }
 }
 
-/// Hide the window
-pub fn hide_window<Message: Send + 'static>() -> Task<Message> {
+pub fn focus_window<Message: Send + 'static>() -> Task<Message> {
     #[cfg(target_os = "windows")]
     {
-        windows::hide_window()
+        windows::focus_window()
     }
     #[cfg(target_os = "linux")]
     {
-        linux::hide_window()
+        linux::focus_window()
     }
     #[cfg(target_os = "macos")]
     {
-        macos::hide_window()
+        macos::focus_window()
+    }
+}
+
+pub fn is_wayland_backend() -> bool {
+    #[cfg(target_os = "linux")]
+    {
+        return linux::is_wayland_backend();
+    }
+
+    #[cfg(not(target_os = "linux"))]
+    {
+        false
     }
 }
 

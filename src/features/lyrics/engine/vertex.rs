@@ -4,6 +4,7 @@
 //! This is the key difference from glyphon - we can pass time information per-glyph.
 
 use bytemuck::{Pod, Zeroable};
+use iced::wgpu;
 
 /// 单个字形的顶点数据，包含时间信息
 ///
