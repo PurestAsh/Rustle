@@ -168,7 +168,6 @@ jobs:
 
       - name: Compile app icon assets
         run: |
-          rm -rf build/macos/AppIcon.icon
           mkdir -p build/macos/AppIcon.icon/Assets
           cp assets/icons/icon.png build/macos/AppIcon.icon/Assets/icon.png
           cat > build/macos/AppIcon.icon/icon.json <<'JSON'
@@ -185,7 +184,7 @@ jobs:
                   "glass" : false,
                   "hidden" : false,
                   "image-name" : "icon.png",
-                  "name" : "icon 2",
+                  "name" : "icon",
                   "position" : {
                     "scale" : 0.725,
                     "translation-in-points" : [
