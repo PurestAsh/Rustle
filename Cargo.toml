@@ -1,6 +1,6 @@
 [package]
 name = "rustle"
-version = "0.1.6"
+version = "0.1.7"
 edition = "2024"
 description = "A modern music player built with Rust and iced, supporting NetEase Cloud Music"
 license = "AGPL-3.0-or-later"
@@ -12,7 +12,6 @@ categories = ["multimedia::audio"]
 
 [dependencies]
 iced = { version = "=0.15.0-dev", features = ["tokio", "advanced", "canvas", "image", "svg", "debug"] }
-iced_aw = { version = "0.13.1", features = ["full"] }
 iced_anim = "0.3.1"
 wgpu = "27.0.1"
 bytemuck = { version = "1.25", features = ["derive"] }
