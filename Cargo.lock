@@ -2187,7 +2187,7 @@ dependencies = [
  "log",
  "presser",
  "thiserror 1.0.69",
- "windows 0.58.0",
+ "windows 0.54.0",
 ]
 
 [[package]]
@@ -2533,7 +2533,7 @@ dependencies = [
  "js-sys",
  "log",
  "wasm-bindgen",
- "windows-core 0.58.0",
+ "windows-core 0.62.2",
 ]
 
 [[package]]
@@ -2548,7 +2548,7 @@ dependencies = [
 [[package]]
 name = "iced"
 version = "0.15.0-dev"
-source = "git+https://github.com/Fei-xiangShi/iced.git?rev=14e19572111916a4e8e328c5e8bda7ce3b114c65#14e19572111916a4e8e328c5e8bda7ce3b114c65"
+source = "git+https://github.com/Fei-xiangShi/iced.git?rev=16b1fa1c387a5a08c9432f7afd3f2eb2a0c5b33e#16b1fa1c387a5a08c9432f7afd3f2eb2a0c5b33e"
 dependencies = [
  "iced_core 0.15.0-dev",
  "iced_debug",
@@ -2574,7 +2574,7 @@ dependencies = [
 [[package]]
 name = "iced_beacon"
 version = "0.15.0-dev"
-source = "git+https://github.com/Fei-xiangShi/iced.git?rev=14e19572111916a4e8e328c5e8bda7ce3b114c65#14e19572111916a4e8e328c5e8bda7ce3b114c65"
+source = "git+https://github.com/Fei-xiangShi/iced.git?rev=16b1fa1c387a5a08c9432f7afd3f2eb2a0c5b33e#16b1fa1c387a5a08c9432f7afd3f2eb2a0c5b33e"
 dependencies = [
  "bincode",
  "futures",
@@ -2607,7 +2607,7 @@ dependencies = [
 [[package]]
 name = "iced_core"
 version = "0.15.0-dev"
-source = "git+https://github.com/Fei-xiangShi/iced.git?rev=14e19572111916a4e8e328c5e8bda7ce3b114c65#14e19572111916a4e8e328c5e8bda7ce3b114c65"
+source = "git+https://github.com/Fei-xiangShi/iced.git?rev=16b1fa1c387a5a08c9432f7afd3f2eb2a0c5b33e#16b1fa1c387a5a08c9432f7afd3f2eb2a0c5b33e"
 dependencies = [
  "bitflags 2.11.0",
  "bytes",
@@ -2625,7 +2625,7 @@ dependencies = [
 [[package]]
 name = "iced_debug"
 version = "0.15.0-dev"
-source = "git+https://github.com/Fei-xiangShi/iced.git?rev=14e19572111916a4e8e328c5e8bda7ce3b114c65#14e19572111916a4e8e328c5e8bda7ce3b114c65"
+source = "git+https://github.com/Fei-xiangShi/iced.git?rev=16b1fa1c387a5a08c9432f7afd3f2eb2a0c5b33e#16b1fa1c387a5a08c9432f7afd3f2eb2a0c5b33e"
 dependencies = [
  "iced_beacon",
  "iced_core 0.15.0-dev",
@@ -2636,7 +2636,7 @@ dependencies = [
 [[package]]
 name = "iced_devtools"
 version = "0.15.0-dev"
-source = "git+https://github.com/Fei-xiangShi/iced.git?rev=14e19572111916a4e8e328c5e8bda7ce3b114c65#14e19572111916a4e8e328c5e8bda7ce3b114c65"
+source = "git+https://github.com/Fei-xiangShi/iced.git?rev=16b1fa1c387a5a08c9432f7afd3f2eb2a0c5b33e#16b1fa1c387a5a08c9432f7afd3f2eb2a0c5b33e"
 dependencies = [
  "iced_debug",
  "iced_program",
@@ -2647,7 +2647,7 @@ dependencies = [
 [[package]]
 name = "iced_futures"
 version = "0.15.0-dev"
-source = "git+https://github.com/Fei-xiangShi/iced.git?rev=14e19572111916a4e8e328c5e8bda7ce3b114c65#14e19572111916a4e8e328c5e8bda7ce3b114c65"
+source = "git+https://github.com/Fei-xiangShi/iced.git?rev=16b1fa1c387a5a08c9432f7afd3f2eb2a0c5b33e#16b1fa1c387a5a08c9432f7afd3f2eb2a0c5b33e"
 dependencies = [
  "futures",
  "iced_core 0.15.0-dev",
@@ -2661,7 +2661,7 @@ dependencies = [
 [[package]]
 name = "iced_graphics"
 version = "0.15.0-dev"
-source = "git+https://github.com/Fei-xiangShi/iced.git?rev=14e19572111916a4e8e328c5e8bda7ce3b114c65#14e19572111916a4e8e328c5e8bda7ce3b114c65"
+source = "git+https://github.com/Fei-xiangShi/iced.git?rev=16b1fa1c387a5a08c9432f7afd3f2eb2a0c5b33e#16b1fa1c387a5a08c9432f7afd3f2eb2a0c5b33e"
 dependencies = [
  "bitflags 2.11.0",
  "bytemuck",
@@ -2682,7 +2682,7 @@ dependencies = [
 [[package]]
 name = "iced_program"
 version = "0.15.0-dev"
-source = "git+https://github.com/Fei-xiangShi/iced.git?rev=14e19572111916a4e8e328c5e8bda7ce3b114c65#14e19572111916a4e8e328c5e8bda7ce3b114c65"
+source = "git+https://github.com/Fei-xiangShi/iced.git?rev=16b1fa1c387a5a08c9432f7afd3f2eb2a0c5b33e#16b1fa1c387a5a08c9432f7afd3f2eb2a0c5b33e"
 dependencies = [
  "iced_graphics",
  "iced_runtime",
@@ -2691,7 +2691,7 @@ dependencies = [
 [[package]]
 name = "iced_renderer"
 version = "0.15.0-dev"
-source = "git+https://github.com/Fei-xiangShi/iced.git?rev=14e19572111916a4e8e328c5e8bda7ce3b114c65#14e19572111916a4e8e328c5e8bda7ce3b114c65"
+source = "git+https://github.com/Fei-xiangShi/iced.git?rev=16b1fa1c387a5a08c9432f7afd3f2eb2a0c5b33e#16b1fa1c387a5a08c9432f7afd3f2eb2a0c5b33e"
 dependencies = [
  "iced_graphics",
  "iced_tiny_skia",
@@ -2703,7 +2703,7 @@ dependencies = [
 [[package]]
 name = "iced_runtime"
 version = "0.15.0-dev"
-source = "git+https://github.com/Fei-xiangShi/iced.git?rev=14e19572111916a4e8e328c5e8bda7ce3b114c65#14e19572111916a4e8e328c5e8bda7ce3b114c65"
+source = "git+https://github.com/Fei-xiangShi/iced.git?rev=16b1fa1c387a5a08c9432f7afd3f2eb2a0c5b33e#16b1fa1c387a5a08c9432f7afd3f2eb2a0c5b33e"
 dependencies = [
  "bytes",
  "iced_core 0.15.0-dev",
@@ -2715,7 +2715,7 @@ dependencies = [
 [[package]]
 name = "iced_tiny_skia"
 version = "0.15.0-dev"
-source = "git+https://github.com/Fei-xiangShi/iced.git?rev=14e19572111916a4e8e328c5e8bda7ce3b114c65#14e19572111916a4e8e328c5e8bda7ce3b114c65"
+source = "git+https://github.com/Fei-xiangShi/iced.git?rev=16b1fa1c387a5a08c9432f7afd3f2eb2a0c5b33e#16b1fa1c387a5a08c9432f7afd3f2eb2a0c5b33e"
 dependencies = [
  "bytemuck",
  "cosmic-text 0.18.2",
@@ -2732,7 +2732,7 @@ dependencies = [
 [[package]]
 name = "iced_wgpu"
 version = "0.15.0-dev"
-source = "git+https://github.com/Fei-xiangShi/iced.git?rev=14e19572111916a4e8e328c5e8bda7ce3b114c65#14e19572111916a4e8e328c5e8bda7ce3b114c65"
+source = "git+https://github.com/Fei-xiangShi/iced.git?rev=16b1fa1c387a5a08c9432f7afd3f2eb2a0c5b33e#16b1fa1c387a5a08c9432f7afd3f2eb2a0c5b33e"
 dependencies = [
  "bitflags 2.11.0",
  "bytemuck",
@@ -2753,7 +2753,7 @@ dependencies = [
 [[package]]
 name = "iced_widget"
 version = "0.15.0-dev"
-source = "git+https://github.com/Fei-xiangShi/iced.git?rev=14e19572111916a4e8e328c5e8bda7ce3b114c65#14e19572111916a4e8e328c5e8bda7ce3b114c65"
+source = "git+https://github.com/Fei-xiangShi/iced.git?rev=16b1fa1c387a5a08c9432f7afd3f2eb2a0c5b33e#16b1fa1c387a5a08c9432f7afd3f2eb2a0c5b33e"
 dependencies = [
  "iced_renderer",
  "log",
@@ -2766,7 +2766,7 @@ dependencies = [
 [[package]]
 name = "iced_winit"
 version = "0.15.0-dev"
-source = "git+https://github.com/Fei-xiangShi/iced.git?rev=14e19572111916a4e8e328c5e8bda7ce3b114c65#14e19572111916a4e8e328c5e8bda7ce3b114c65"
+source = "git+https://github.com/Fei-xiangShi/iced.git?rev=16b1fa1c387a5a08c9432f7afd3f2eb2a0c5b33e#16b1fa1c387a5a08c9432f7afd3f2eb2a0c5b33e"
 dependencies = [
  "arboard",
  "iced_debug",
