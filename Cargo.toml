@@ -13,7 +13,6 @@ categories = ["multimedia::audio"]
 [dependencies]
 iced = { version = "=0.15.0-dev", features = ["tokio", "advanced", "canvas", "image", "svg", "debug"] }
 iced_anim = "0.3.1"
-wgpu = "27.0.1"
 bytemuck = { version = "1.25", features = ["derive"] }
 tokio = { version = "1.50", features = ["full"] }
 rodio = { version = "0.21.1", features = ["symphonia-all"] }
