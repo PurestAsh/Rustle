@@ -12,6 +12,13 @@ mod macos;
 #[cfg(target_os = "windows")]
 mod windows;
 
+pub fn initialize_process() {
+    #[cfg(target_os = "windows")]
+    {
+        windows::initialize_process();
+    }
+}
+
 pub fn set_window_mode<Message: Send + 'static>(mode: iced::window::Mode) -> Task<Message> {
     #[cfg(target_os = "windows")]
     {
@@ -51,6 +58,19 @@ pub fn is_wayland_backend() -> bool {
     #[cfg(not(target_os = "linux"))]
     {
         false
+    }
+}
+
+pub fn native_window_handle(id: iced::window::Id) -> Task<Option<usize>> {
+    #[cfg(target_os = "windows")]
+    {
+        windows::native_window_handle(id)
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        let _ = id;
+        Task::done(None)
     }
 }
 
