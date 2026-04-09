@@ -10,6 +10,7 @@ use rodio::Source;
 use spectrum_analyzer::scaling::divide_by_N_sqrt;
 use spectrum_analyzer::windows::hann_window;
 use spectrum_analyzer::{FrequencyLimit, samples_fft_to_spectrum};
+use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::sync::{Arc, RwLock};
 
 /// FFT size - 4096 gives ~11.7Hz resolution at 48kHz
@@ -27,18 +28,38 @@ const MAX_FREQ: f32 = 20000.0;
 /// Audio analysis data shared between audio thread and UI
 #[derive(Clone)]
 pub struct AudioAnalysisData {
-    inner: Arc<RwLock<AudioAnalysisInner>>,
+    snapshot: Arc<RwLock<AudioAnalysisSnapshot>>,
+    enabled: Arc<AtomicBool>,
+    sample_rate: Arc<AtomicU32>,
+    decay_bits: Arc<AtomicU32>,
+    reset_generation: Arc<AtomicU32>,
 }
 
-struct AudioAnalysisInner {
+struct AudioAnalysisSnapshot {
     /// Left channel RMS level (0.0 to 1.0)
     left_rms: f32,
     /// Right channel RMS level (0.0 to 1.0)
     right_rms: f32,
     /// Spectrum magnitude in dB for each bar (smoothed with decay)
     spectrum_db: Vec<f32>,
-    /// Peak hold values for each bar
-    peak_db: Vec<f32>,
+}
+
+impl Default for AudioAnalysisSnapshot {
+    fn default() -> Self {
+        Self {
+            left_rms: 0.0,
+            right_rms: 0.0,
+            spectrum_db: vec![-60.0; SPECTRUM_BARS],
+        }
+    }
+}
+
+struct AudioAnalysisProcessor {
+    /// Smoothed left/right RMS values.
+    left_rms: f32,
+    right_rms: f32,
+    /// Spectrum magnitude in dB for each bar (smoothed with decay)
+    spectrum_db: Vec<f32>,
     /// Sample buffer for FFT (mono mixed)
     sample_buffer: Vec<f32>,
     /// Left channel samples for RMS
@@ -51,27 +72,20 @@ struct AudioAnalysisInner {
     channels: u16,
     /// Sample rate
     sample_rate: u32,
-    /// Decay factor (0.0 = instant, 1.0 = no decay)
-    decay: f32,
-    /// Peak decay factor
-    peak_decay: f32,
 }
 
-impl Default for AudioAnalysisInner {
+impl Default for AudioAnalysisProcessor {
     fn default() -> Self {
         Self {
             left_rms: 0.0,
             right_rms: 0.0,
             spectrum_db: vec![-60.0; SPECTRUM_BARS],
-            peak_db: vec![-60.0; SPECTRUM_BARS],
             sample_buffer: Vec::with_capacity(FFT_SIZE),
             left_samples: Vec::with_capacity(FFT_SIZE / 2),
             right_samples: Vec::with_capacity(FFT_SIZE / 2),
             current_channel: 0,
             channels: 2,
             sample_rate: 48000,
-            decay: 0.85,      // Smooth decay
-            peak_decay: 0.98, // Slow peak fall
         }
     }
 }
@@ -80,23 +94,27 @@ impl AudioAnalysisData {
     /// Create new audio analysis data
     pub fn new() -> Self {
         Self {
-            inner: Arc::new(RwLock::new(AudioAnalysisInner::default())),
+            snapshot: Arc::new(RwLock::new(AudioAnalysisSnapshot::default())),
+            enabled: Arc::new(AtomicBool::new(false)),
+            sample_rate: Arc::new(AtomicU32::new(48000)),
+            decay_bits: Arc::new(AtomicU32::new(0.85_f32.to_bits())),
+            reset_generation: Arc::new(AtomicU32::new(0)),
         }
     }
 
     /// Get left channel RMS level (0.0 to 1.0)
     pub fn left_rms(&self) -> f32 {
-        self.inner.read().map(|i| i.left_rms).unwrap_or(0.0)
+        self.snapshot.read().map(|i| i.left_rms).unwrap_or(0.0)
     }
 
     /// Get right channel RMS level (0.0 to 1.0)
     pub fn right_rms(&self) -> f32 {
-        self.inner.read().map(|i| i.right_rms).unwrap_or(0.0)
+        self.snapshot.read().map(|i| i.right_rms).unwrap_or(0.0)
     }
 
     /// Get spectrum data in dB (SPECTRUM_BARS values, -60 to +12 dB range)
     pub fn spectrum_db(&self) -> Vec<f32> {
-        self.inner
+        self.snapshot
             .read()
             .map(|i| i.spectrum_db.clone())
             .unwrap_or_else(|_| vec![-60.0; SPECTRUM_BARS])
@@ -104,96 +122,133 @@ impl AudioAnalysisData {
 
     /// Get sample rate
     pub fn sample_rate(&self) -> u32 {
-        self.inner.read().map(|i| i.sample_rate).unwrap_or(48000)
+        self.sample_rate.load(Ordering::Acquire)
     }
 
     /// Set decay factor (0.0 = instant, 0.99 = very slow)
     pub fn set_decay(&self, decay: f32) {
-        if let Ok(mut inner) = self.inner.write() {
-            inner.decay = decay.clamp(0.0, 0.99);
+        self.decay_bits
+            .store(decay.clamp(0.0, 0.99).to_bits(), Ordering::Release);
+    }
+
+    /// Enable or disable analysis in the audio callback.
+    pub fn set_enabled(&self, enabled: bool) {
+        let was_enabled = self.enabled.swap(enabled, Ordering::AcqRel);
+        if was_enabled != enabled {
+            self.reset();
         }
+    }
+
+    pub fn is_enabled(&self) -> bool {
+        self.enabled.load(Ordering::Acquire)
     }
 
     /// Reset analysis data (call when playback stops)
     pub fn reset(&self) {
-        if let Ok(mut inner) = self.inner.write() {
-            inner.left_rms = 0.0;
-            inner.right_rms = 0.0;
-            inner.spectrum_db.fill(-60.0);
-            inner.peak_db.fill(-60.0);
-            inner.sample_buffer.clear();
-            inner.left_samples.clear();
-            inner.right_samples.clear();
+        self.reset_generation.fetch_add(1, Ordering::AcqRel);
+        if let Ok(mut snapshot) = self.snapshot.write() {
+            snapshot.left_rms = 0.0;
+            snapshot.right_rms = 0.0;
+            snapshot.spectrum_db.fill(-60.0);
         }
     }
 
-    /// Update sample rate and channels
-    fn configure(&self, sample_rate: u32, channels: u16) {
-        if let Ok(mut inner) = self.inner.write() {
-            inner.sample_rate = sample_rate;
-            inner.channels = channels;
-            inner.current_channel = 0;
-        }
+    fn decay(&self) -> f32 {
+        f32::from_bits(self.decay_bits.load(Ordering::Acquire))
     }
 
-    /// Process a single sample
-    fn process_sample(&self, sample: f32) {
-        if let Ok(mut inner) = self.inner.write() {
-            let channel = inner.current_channel;
-            let channels = inner.channels as usize;
+    fn reset_generation(&self) -> u32 {
+        self.reset_generation.load(Ordering::Acquire)
+    }
 
-            // Accumulate samples for RMS
-            if channel == 0 {
-                inner.left_samples.push(sample);
-                // Also add to FFT buffer (mono)
-                inner.sample_buffer.push(sample);
-            } else if channel == 1 {
-                inner.right_samples.push(sample);
-                // Mix into FFT buffer for stereo
-                if let Some(last) = inner.sample_buffer.last_mut() {
-                    *last = (*last + sample) * 0.5;
-                }
+    fn publish(&self, sample_rate: u32, left_rms: f32, right_rms: f32, spectrum_db: &[f32]) {
+        self.sample_rate.store(sample_rate, Ordering::Release);
+        if let Ok(mut snapshot) = self.snapshot.write() {
+            snapshot.left_rms = left_rms;
+            snapshot.right_rms = right_rms;
+            snapshot.spectrum_db.clear();
+            snapshot.spectrum_db.extend_from_slice(spectrum_db);
+        }
+    }
+}
+
+impl Default for AudioAnalysisData {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl AudioAnalysisProcessor {
+    fn new(sample_rate: u32, channels: u16) -> Self {
+        let mut processor = Self::default();
+        processor.sample_rate = sample_rate;
+        processor.channels = channels;
+        processor
+    }
+
+    fn reset(&mut self) {
+        self.left_rms = 0.0;
+        self.right_rms = 0.0;
+        self.spectrum_db.fill(-60.0);
+        self.sample_buffer.clear();
+        self.left_samples.clear();
+        self.right_samples.clear();
+        self.current_channel = 0;
+    }
+
+    fn process_sample(&mut self, sample: f32, analysis: &AudioAnalysisData) {
+        let channel = self.current_channel;
+        let channels = self.channels as usize;
+
+        if channel == 0 {
+            self.left_samples.push(sample);
+            self.sample_buffer.push(sample);
+        } else if channel == 1 {
+            self.right_samples.push(sample);
+            if let Some(last) = self.sample_buffer.last_mut() {
+                *last = (*last + sample) * 0.5;
             }
+        }
 
-            // Update channel counter
-            inner.current_channel = (channel + 1) % channels;
+        self.current_channel = (channel + 1) % channels;
 
-            // Check if we have enough samples for FFT
-            if inner.sample_buffer.len() >= FFT_SIZE {
-                Self::perform_fft(&mut inner);
-            }
+        if self.sample_buffer.len() >= FFT_SIZE {
+            let (left_rms, right_rms, spectrum_db) = self.perform_fft(analysis.decay());
+            analysis.publish(self.sample_rate, left_rms, right_rms, &spectrum_db);
         }
     }
 
     /// Perform FFT analysis and update spectrum
-    fn perform_fft(inner: &mut AudioAnalysisInner) {
+    fn perform_fft(&mut self, decay: f32) -> (f32, f32, Vec<f32>) {
+        let mut left_rms = 0.0;
+        let mut right_rms = 0.0;
+
         // Calculate RMS first
-        if !inner.left_samples.is_empty() {
-            let sum_sq: f32 = inner.left_samples.iter().map(|s| s * s).sum();
-            let rms = (sum_sq / inner.left_samples.len() as f32).sqrt();
-            inner.left_rms = inner.left_rms * 0.7 + rms.min(1.0) * 0.3;
+        if !self.left_samples.is_empty() {
+            let sum_sq: f32 = self.left_samples.iter().map(|s| s * s).sum();
+            let rms = (sum_sq / self.left_samples.len() as f32).sqrt();
+            left_rms = self.left_rms * 0.7 + rms.min(1.0) * 0.3;
         }
-        if !inner.right_samples.is_empty() {
-            let sum_sq: f32 = inner.right_samples.iter().map(|s| s * s).sum();
-            let rms = (sum_sq / inner.right_samples.len() as f32).sqrt();
-            inner.right_rms = inner.right_rms * 0.7 + rms.min(1.0) * 0.3;
+        if !self.right_samples.is_empty() {
+            let sum_sq: f32 = self.right_samples.iter().map(|s| s * s).sum();
+            let rms = (sum_sq / self.right_samples.len() as f32).sqrt();
+            right_rms = self.right_rms * 0.7 + rms.min(1.0) * 0.3;
         }
 
         // Apply Hann window to samples
-        let samples: Vec<f32> = inner.sample_buffer[..FFT_SIZE].to_vec();
+        let samples: Vec<f32> = self.sample_buffer[..FFT_SIZE].to_vec();
         let windowed = hann_window(&samples);
+        let mut spectrum_db = self.spectrum_db.clone();
 
         // Perform FFT
         if let Ok(spectrum) = samples_fft_to_spectrum(
             &windowed,
-            inner.sample_rate,
+            self.sample_rate,
             FrequencyLimit::Range(MIN_FREQ, MAX_FREQ),
             Some(&divide_by_N_sqrt),
         ) {
             // Map FFT bins to logarithmic frequency bars
             let freq_data = spectrum.data();
-            let decay = inner.decay;
-            let peak_decay = inner.peak_decay;
 
             for bar_idx in 0..SPECTRUM_BARS {
                 // Calculate frequency range for this bar (logarithmic scale)
@@ -219,36 +274,27 @@ impl AudioAnalysisData {
                 };
 
                 // Apply decay smoothing
-                let current = inner.spectrum_db[bar_idx];
-                inner.spectrum_db[bar_idx] = if db > current {
+                let current = spectrum_db[bar_idx];
+                spectrum_db[bar_idx] = if db > current {
                     // Attack: fast rise
                     current * 0.3 + db * 0.7
                 } else {
                     // Decay: smooth fall
                     current * decay + db * (1.0 - decay)
                 };
-
-                // Update peak hold
-                if db > inner.peak_db[bar_idx] {
-                    inner.peak_db[bar_idx] = db;
-                } else {
-                    inner.peak_db[bar_idx] =
-                        inner.peak_db[bar_idx] * peak_decay + (-60.0) * (1.0 - peak_decay);
-                }
             }
         }
 
         // Keep overlap for smoother updates (50% overlap)
         let overlap = FFT_SIZE / 2;
-        inner.sample_buffer.drain(0..overlap);
-        inner.left_samples.clear();
-        inner.right_samples.clear();
-    }
-}
+        self.sample_buffer.drain(0..overlap);
+        self.left_samples.clear();
+        self.right_samples.clear();
+        self.left_rms = left_rms;
+        self.right_rms = right_rms;
+        self.spectrum_db.clone_from(&spectrum_db);
 
-impl Default for AudioAnalysisData {
-    fn default() -> Self {
-        Self::new()
+        (left_rms, right_rms, spectrum_db)
     }
 }
 
@@ -259,6 +305,8 @@ where
 {
     source: S,
     analysis: AudioAnalysisData,
+    processor: AudioAnalysisProcessor,
+    last_reset_generation: u32,
 }
 
 impl<S> AnalyzingSource<S>
@@ -267,8 +315,23 @@ where
 {
     /// Create a new analyzing source
     pub fn new(source: S, analysis: AudioAnalysisData) -> Self {
-        analysis.configure(source.sample_rate(), source.channels());
-        Self { source, analysis }
+        let processor = AudioAnalysisProcessor::new(source.sample_rate(), source.channels());
+        let last_reset_generation = analysis.reset_generation();
+
+        Self {
+            source,
+            analysis,
+            processor,
+            last_reset_generation,
+        }
+    }
+
+    fn sync_control_state(&mut self) {
+        let reset_generation = self.analysis.reset_generation();
+        if reset_generation != self.last_reset_generation {
+            self.last_reset_generation = reset_generation;
+            self.processor.reset();
+        }
     }
 }
 
@@ -280,7 +343,10 @@ where
 
     fn next(&mut self) -> Option<Self::Item> {
         let sample = self.source.next()?;
-        self.analysis.process_sample(sample);
+        self.sync_control_state();
+        if self.analysis.is_enabled() {
+            self.processor.process_sample(sample, &self.analysis);
+        }
         Some(sample)
     }
 
@@ -312,6 +378,7 @@ where
     fn try_seek(&mut self, pos: std::time::Duration) -> Result<(), rodio::source::SeekError> {
         // Reset analysis buffers when seeking
         self.analysis.reset();
+        self.processor.reset();
         self.source.try_seek(pos)
     }
 }

@@ -4,6 +4,7 @@
 //! 31Hz, 62Hz, 125Hz, 250Hz, 500Hz, 1kHz, 2kHz, 4kHz, 8kHz, 16kHz
 
 use rodio::Source;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, RwLock};
 
 /// Standard 10-band equalizer center frequencies in Hz
@@ -96,13 +97,13 @@ fn calc_peaking_eq(freq: f32, gain_db: f32, sample_rate: f32, q: f32) -> BiquadC
 #[derive(Clone)]
 pub struct EqualizerParams {
     inner: Arc<RwLock<EqualizerParamsInner>>,
+    enabled: Arc<AtomicBool>,
+    coeffs_dirty: Arc<AtomicBool>,
 }
 
 struct EqualizerParamsInner {
-    enabled: bool,
     gains: [f32; 10],
     sample_rate: u32,
-    coeffs_dirty: bool,
 }
 
 impl EqualizerParams {
@@ -110,33 +111,31 @@ impl EqualizerParams {
     pub fn new(sample_rate: u32) -> Self {
         Self {
             inner: Arc::new(RwLock::new(EqualizerParamsInner {
-                enabled: false,
                 gains: [0.0; 10],
                 sample_rate,
-                coeffs_dirty: true,
             })),
+            enabled: Arc::new(AtomicBool::new(false)),
+            coeffs_dirty: Arc::new(AtomicBool::new(true)),
         }
     }
 
     /// Enable or disable the equalizer
     pub fn set_enabled(&self, enabled: bool) {
-        if let Ok(mut inner) = self.inner.write() {
-            inner.enabled = enabled;
-            inner.coeffs_dirty = true;
-        }
+        self.enabled.store(enabled, Ordering::Release);
+        self.coeffs_dirty.store(true, Ordering::Release);
     }
 
     /// Check if equalizer is enabled
     pub fn is_enabled(&self) -> bool {
-        self.inner.read().map(|i| i.enabled).unwrap_or(false)
+        self.enabled.load(Ordering::Acquire)
     }
 
     /// Set all 10 band gains at once (in dB, typically -12 to +12)
     pub fn set_gains(&self, gains: [f32; 10]) {
         if let Ok(mut inner) = self.inner.write() {
             inner.gains = gains;
-            inner.coeffs_dirty = true;
         }
+        self.coeffs_dirty.store(true, Ordering::Release);
     }
 
     /// Set a single band gain
@@ -145,8 +144,8 @@ impl EqualizerParams {
         if band < 10 {
             if let Ok(mut inner) = self.inner.write() {
                 inner.gains[band] = gain_db.clamp(-12.0, 12.0);
-                inner.coeffs_dirty = true;
             }
+            self.coeffs_dirty.store(true, Ordering::Release);
         }
     }
 
@@ -161,7 +160,7 @@ impl EqualizerParams {
         if let Ok(mut inner) = self.inner.write() {
             if inner.sample_rate != sample_rate {
                 inner.sample_rate = sample_rate;
-                inner.coeffs_dirty = true;
+                self.coeffs_dirty.store(true, Ordering::Release);
             }
         }
     }
@@ -169,9 +168,7 @@ impl EqualizerParams {
     /// 标记系数为脏，强制下次采样时重新计算
     /// 切换曲目时使用，确保 EQ 正确初始化
     pub fn mark_dirty(&self) {
-        if let Ok(mut inner) = self.inner.write() {
-            inner.coeffs_dirty = true;
-        }
+        self.coeffs_dirty.store(true, Ordering::Release);
     }
 }
 
@@ -189,6 +186,7 @@ where
     // Current channel being processed (for interleaved stereo)
     current_channel: usize,
     channels: u16,
+    enabled: bool,
 }
 
 impl<S> Equalizer<S>
@@ -213,6 +211,7 @@ where
             states: [[BiquadState::default(); 10]; 2],
             current_channel: 0,
             channels,
+            enabled: false,
         };
 
         eq.update_coefficients();
@@ -221,24 +220,16 @@ where
 
     /// Update filter coefficients from current parameters
     fn update_coefficients(&mut self) {
-        let (enabled, gains, sample_rate, coeffs_dirty) = {
-            let inner = self.params.inner.read().unwrap();
-            (
-                inner.enabled,
-                inner.gains,
-                inner.sample_rate,
-                inner.coeffs_dirty,
-            )
-        };
-
+        let coeffs_dirty = self.params.coeffs_dirty.swap(false, Ordering::AcqRel);
         if !coeffs_dirty {
             return;
         }
 
-        // Mark as clean
-        if let Ok(mut inner) = self.params.inner.write() {
-            inner.coeffs_dirty = false;
-        }
+        let (enabled, gains, sample_rate) = {
+            let inner = self.params.inner.read().unwrap();
+            (self.params.is_enabled(), inner.gains, inner.sample_rate)
+        };
+        self.enabled = enabled;
 
         if !enabled {
             // Set all filters to unity gain (bypass)
@@ -271,21 +262,14 @@ where
 
     fn next(&mut self) -> Option<Self::Item> {
         // Check if coefficients need updating
-        if self
-            .params
-            .inner
-            .read()
-            .map(|i| i.coeffs_dirty)
-            .unwrap_or(false)
-        {
+        if self.params.coeffs_dirty.load(Ordering::Acquire) {
             self.update_coefficients();
         }
 
         let sample = self.source.next()?;
 
         // Check if EQ is enabled
-        let enabled = self.params.is_enabled();
-        if !enabled {
+        if !self.enabled {
             // Bypass - return original sample
             self.current_channel = (self.current_channel + 1) % self.channels as usize;
             return Some(sample);

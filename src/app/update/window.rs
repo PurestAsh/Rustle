@@ -167,11 +167,13 @@ impl App {
 
             Message::WindowFocused => {
                 self.core.window_focused = true;
+                self.sync_audio_analysis_state();
                 Some(Task::none())
             }
 
             Message::WindowUnfocused => {
                 self.core.window_focused = false;
+                self.sync_audio_analysis_state();
                 Some(Task::none())
             }
 
@@ -179,6 +181,7 @@ impl App {
                 self.core.window_operation_pending = false;
                 self.core.window_visibility =
                     finalize_window_visibility(self.current_visible_mode());
+                self.sync_audio_analysis_state();
                 Some(Task::none())
             }
 

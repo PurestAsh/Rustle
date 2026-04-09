@@ -336,6 +336,7 @@ pub struct UiState {
     // Playback Controls UI
     pub seek_preview_position: Option<f32>,
     pub save_position_counter: u32,
+    pub last_mpris_sync: Option<Instant>,
 
     // Sidebar
     pub importing_playlist: Option<ImportingPlaylist>,
@@ -366,6 +367,7 @@ impl UiState {
             queue_visible: false,
             seek_preview_position: None,
             save_position_counter: 0,
+            last_mpris_sync: None,
             importing_playlist: None,
             sidebar_animations: Default::default(),
             sidebar_width: 240.0,

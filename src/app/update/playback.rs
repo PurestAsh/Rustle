@@ -2,6 +2,7 @@
 //! Playback control message handlers
 
 use iced::Task;
+use std::time::Duration;
 
 use crate::app::helpers::update_tray_state_full;
 use crate::app::message::Message;
@@ -302,7 +303,15 @@ impl App {
 
     fn handle_playback_tick(&mut self) -> Task<Message> {
         self.update_audio_tick();
-        self.update_mpris_state();
+        let now = iced::time::Instant::now();
+        let should_sync_mpris = self
+            .ui
+            .last_mpris_sync
+            .is_none_or(|last| now.duration_since(last) >= Duration::from_secs(1));
+        if should_sync_mpris {
+            self.ui.last_mpris_sync = Some(now);
+            self.update_mpris_state();
+        }
 
         let lyrics_scroll_task = if self.ui.lyrics.is_open {
             self.update_lyrics_animations()

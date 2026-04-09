@@ -251,6 +251,7 @@ impl App {
             }
             Message::UpdatePowerSavingMode(enabled) => {
                 self.core.settings.display.power_saving_mode = *enabled;
+                self.sync_audio_analysis_state();
                 tracing::info!("Power saving mode: {}", enabled);
                 Some(Task::perform(async { Message::SaveSettings }, |m| m))
             }

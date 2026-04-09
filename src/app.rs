@@ -158,16 +158,26 @@ impl App {
         // 6. Window events
         let close_request_sub = iced::window::close_requests().map(|_id| Message::RequestClose);
 
-        // 7. Animation subscription (165fps)
-        let animation_sub = if has_animations || lyrics_needs_frames || audio_engine_needs_frames {
+        let window_inactive = window_hidden || !self.core.window_focused;
+
+        // 7. Animation subscription
+        let animation_sub = if !window_inactive
+            && (has_animations || lyrics_needs_frames || audio_engine_needs_frames)
+        {
             iced::time::every(Duration::from_micros(6060)).map(|_| Message::AnimationTick)
         } else {
             iced::Subscription::none()
         };
 
-        // 8. Playback monitoring (100ms/500ms intervals)
+        // 8. Playback monitoring
         let playback_sub = if is_playing {
-            let interval = if power_saving { 500 } else { 100 };
+            let interval = if window_inactive {
+                1000
+            } else if power_saving {
+                500
+            } else {
+                100
+            };
             iced::time::every(Duration::from_millis(interval)).map(|_| Message::PlaybackTick)
         } else {
             iced::Subscription::none()

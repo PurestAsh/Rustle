@@ -8,7 +8,8 @@
 //!
 
 use rodio::Source;
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
+use std::sync::atomic::{AtomicU32, Ordering};
 
 use super::analyzer::{AnalyzingSource, AudioAnalysisData};
 use super::equalizer::{Equalizer, EqualizerParams};
@@ -21,7 +22,7 @@ use super::fade::{FadeControl, FadeEnvelope};
 /// and can be updated in real-time.
 #[derive(Clone)]
 pub struct AudioProcessingChain {
-    inner: Arc<RwLock<ChainInner>>,
+    preamp_linear_bits: Arc<AtomicU32>,
     /// Equalizer parameters (has its own Arc<RwLock>)
     eq_params: EqualizerParams,
     /// Fade control for smooth volume transitions
@@ -30,27 +31,11 @@ pub struct AudioProcessingChain {
     analysis: AudioAnalysisData,
 }
 
-struct ChainInner {
-    /// Preamp gain in dB (-12 to +12)
-    preamp_db: f32,
-    /// Current sample rate
-    sample_rate: u32,
-}
-
-impl Default for ChainInner {
-    fn default() -> Self {
-        Self {
-            preamp_db: 0.0,
-            sample_rate: 44100,
-        }
-    }
-}
-
 impl AudioProcessingChain {
     /// Create a new audio processing chain
     pub fn new() -> Self {
         Self {
-            inner: Arc::new(RwLock::new(ChainInner::default())),
+            preamp_linear_bits: Arc::new(AtomicU32::new(1.0_f32.to_bits())),
             eq_params: EqualizerParams::new(44100),
             fade_control: FadeControl::new(1.0),
             analysis: AudioAnalysisData::new(),
@@ -71,9 +56,14 @@ impl AudioProcessingChain {
 
     /// Set preamp gain in dB (-12 to +12)
     pub fn set_preamp(&self, db: f32) {
-        if let Ok(mut inner) = self.inner.write() {
-            inner.preamp_db = db.clamp(-12.0, 12.0);
-        }
+        let db = db.clamp(-12.0, 12.0);
+        let linear = if db.abs() < 0.01 {
+            1.0
+        } else {
+            10.0_f32.powf(db / 20.0)
+        };
+        self.preamp_linear_bits
+            .store(linear.to_bits(), Ordering::Release);
     }
 
     // ========================================================================
@@ -104,6 +94,10 @@ impl AudioProcessingChain {
         self.analysis.reset();
     }
 
+    pub fn set_analysis_enabled(&self, enabled: bool) {
+        self.analysis.set_enabled(enabled);
+    }
+
     /// Force EQ coefficients refresh
     /// This marks the EQ parameters as dirty, forcing a recalculation
     /// on the next audio sample. Useful when switching tracks to ensure
@@ -118,9 +112,6 @@ impl AudioProcessingChain {
 
     /// Update sample rate (called when audio format changes)
     pub fn set_sample_rate(&self, sample_rate: u32) {
-        if let Ok(mut inner) = self.inner.write() {
-            inner.sample_rate = sample_rate;
-        }
         self.eq_params.set_sample_rate(sample_rate);
     }
 
@@ -168,7 +159,7 @@ where
 {
     fn new(source: S, chain: AudioProcessingChain) -> Self {
         // Build processing chain: Source -> Preamp -> EQ -> Fade -> Analyzer
-        let preamp_source = PreampSource::new(source, chain.inner.clone());
+        let preamp_source = PreampSource::new(source, chain.preamp_linear_bits.clone());
         let eq_source = Equalizer::new(preamp_source, chain.eq_params.clone());
         let fade_source = FadeEnvelope::new(eq_source, chain.fade_control.clone());
         let analyzed = AnalyzingSource::new(fade_source, chain.analysis.clone());
@@ -223,27 +214,22 @@ where
     S: Source<Item = f32>,
 {
     source: S,
-    chain_inner: Arc<RwLock<ChainInner>>,
+    preamp_linear_bits: Arc<AtomicU32>,
 }
 
 impl<S> PreampSource<S>
 where
     S: Source<Item = f32>,
 {
-    fn new(source: S, chain_inner: Arc<RwLock<ChainInner>>) -> Self {
+    fn new(source: S, preamp_linear_bits: Arc<AtomicU32>) -> Self {
         Self {
             source,
-            chain_inner,
+            preamp_linear_bits,
         }
     }
 
     fn preamp_linear(&self) -> f32 {
-        let db = self.chain_inner.read().map(|i| i.preamp_db).unwrap_or(0.0);
-        if db.abs() < 0.01 {
-            1.0
-        } else {
-            10.0_f32.powf(db / 20.0)
-        }
+        f32::from_bits(self.preamp_linear_bits.load(Ordering::Acquire))
     }
 }
 

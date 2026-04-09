@@ -8,6 +8,14 @@ use crate::app::state::{App, DiscoverViewMode, NavigationEntry, Route, SearchTab
 use crate::ui::components::{LibraryItem, NavItem};
 
 impl App {
+    pub(super) fn sync_audio_analysis_state(&self) {
+        let enabled = matches!(self.ui.current_route, Route::AudioEngine)
+            && !self.core.is_window_hidden()
+            && self.core.window_focused
+            && !self.core.settings.display.power_saving_mode;
+        self.core.audio_chain.set_analysis_enabled(enabled);
+    }
+
     fn close_route_overlays(&mut self) {
         if self.ui.lyrics.is_open {
             self.ui.lyrics.is_open = false;
@@ -81,6 +89,7 @@ impl App {
             }
         }
 
+        self.sync_audio_analysis_state();
         should_reload_search
     }
 
