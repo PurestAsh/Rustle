@@ -1,10 +1,10 @@
 //! Chinese translations (简体中文)
 
 use super::Key;
-use once_cell::sync::Lazy;
 use std::collections::HashMap;
+use std::sync::LazyLock;
 
-static TRANSLATIONS: Lazy<HashMap<Key, &'static str>> = Lazy::new(|| {
+static TRANSLATIONS: LazyLock<HashMap<Key, &'static str>> = LazyLock::new(|| {
     let mut m = HashMap::new();
 
     // App

@@ -1,7 +1,7 @@
 //! Async helper functions for database operations
 
 use std::path::PathBuf;
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 
 use iced::Task;
 
@@ -221,7 +221,7 @@ pub fn init_mpris(
 }
 
 /// Global MPRIS handle for updates
-static MPRIS_HANDLE: once_cell::sync::OnceCell<MediaHandle> = once_cell::sync::OnceCell::new();
+static MPRIS_HANDLE: OnceLock<MediaHandle> = OnceLock::new();
 
 /// Set the global MPRIS handle
 pub fn set_mpris_handle(handle: MediaHandle) {

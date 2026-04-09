@@ -13,13 +13,13 @@ use cosmic_text::{CacheKey, FontSystem};
 use iced::wgpu;
 use parking_lot::Mutex;
 use std::collections::HashMap;
-use std::sync::Arc;
+use std::sync::{Arc, LazyLock};
 use iced::wgpu::{Device, Queue};
 
 /// 全局预生成缓存
 /// 用于在后台线程生成 SDF 位图后，在主线程导入到 SdfCache
-static GLOBAL_PRE_GENERATED: once_cell::sync::Lazy<Mutex<HashMap<CacheKey, SdfBitmap>>> =
-    once_cell::sync::Lazy::new(|| Mutex::new(HashMap::new()));
+static GLOBAL_PRE_GENERATED: LazyLock<Mutex<HashMap<CacheKey, SdfBitmap>>> =
+    LazyLock::new(|| Mutex::new(HashMap::new()));
 
 /// 导入预生成的位图到全局缓存
 pub fn import_to_global_cache(bitmaps: HashMap<CacheKey, SdfBitmap>) {

@@ -774,8 +774,8 @@ fn storage_section(
     cache_stats: Option<&crate::cache::CacheStats>,
 ) -> Element<'static, Message> {
     // Get cache directory path
-    let cache_dir = dirs::cache_dir()
-        .map(|p| p.join("rustle"))
+    let cache_dir = directories::ProjectDirs::from("life", "fxs", "rustle")
+        .map(|dirs| dirs.cache_dir().to_path_buf())
         .unwrap_or_else(|| std::path::PathBuf::from("~/.cache/rustle"));
     let cache_path_str = cache_dir.to_string_lossy().to_string();
 
@@ -878,11 +878,11 @@ fn format_size_bytes(bytes: u64) -> String {
 }
 
 fn about_section(_locale: Locale) -> Element<'static, Message> {
-    use once_cell::sync::Lazy;
+    use std::sync::LazyLock;
 
     static ICON_DATA: &[u8] = include_bytes!("../../../assets/icons/icon_256.png");
-    static ICON_HANDLE: Lazy<iced::widget::image::Handle> =
-        Lazy::new(|| iced::widget::image::Handle::from_bytes(ICON_DATA));
+    static ICON_HANDLE: LazyLock<iced::widget::image::Handle> =
+        LazyLock::new(|| iced::widget::image::Handle::from_bytes(ICON_DATA));
 
     let icon = container(
         iced::widget::image(ICON_HANDLE.clone())

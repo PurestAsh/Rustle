@@ -5,8 +5,8 @@
 use aes::Aes128;
 use aes::cipher::{BlockEncryptMut, KeyInit, KeyIvInit, block_padding::Pkcs7};
 use base64::{Engine as _, engine::general_purpose};
-use lazy_static::lazy_static;
 use rsa::BigUint;
+use std::sync::LazyLock;
 use urlencoding;
 
 type Aes128CbcEnc = cbc::Encryptor<Aes128>;
@@ -14,17 +14,18 @@ type Aes128EcbEnc = ecb::Encryptor<Aes128>;
 
 use AesMode::{Cbc, Ecb};
 
-lazy_static! {
-    static ref IV: Vec<u8> = "0102030405060708".as_bytes().to_vec();
-    static ref PRESET_KEY: Vec<u8> = "0CoJUm6Qyw8W8jud".as_bytes().to_vec();
-    static ref LINUX_API_KEY: Vec<u8> = "rFgB&h#%2?^eDg:Q".as_bytes().to_vec();
-    static ref BASE62: Vec<u8> = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789".as_bytes().to_vec();
-    // RSA public key modulus (n) and exponent (e) extracted from the PEM
-    // Original PEM: MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDgtQn2JZ34ZC28NWYpAUd98iZ37BUrX/aKzmFbt7clFSs6sXqHauqKWqdtLkF2KexO40H1YTX8z2lSgBBOAxLsvaklV8k4cBFK9snQXE9/DDaFt6Rr7iVZMldczhC0JNgTz+SHXT6CBHuX3e9SdB1Ua44oncaTWz7OBGLbCiK45wIDAQAB
-    static ref RSA_MODULUS: Vec<u8> = hex::decode("00e0b509f6259df8642dbc35662901477df22677ec152b5ff68ace615bb7b725152b3ab17a876aea8a5aa76d2e417629ec4ee341f56135fccf695280104e0312ecbda92557c93870114af6c9d05c4f7f0c3685b7a46bee255932575cce10b424d813cfe4875d3e82047b97ddef52741d546b8e289dc6935b3ece0462db0a22b8e7").unwrap();
-    static ref RSA_EXPONENT: Vec<u8> = hex::decode("010001").unwrap();
-    static ref EAPIKEY: Vec<u8> = "e82ckenh8dichen8".as_bytes().to_vec();
-}
+static IV: LazyLock<Vec<u8>> = LazyLock::new(|| "0102030405060708".as_bytes().to_vec());
+static PRESET_KEY: LazyLock<Vec<u8>> = LazyLock::new(|| "0CoJUm6Qyw8W8jud".as_bytes().to_vec());
+static LINUX_API_KEY: LazyLock<Vec<u8>> = LazyLock::new(|| "rFgB&h#%2?^eDg:Q".as_bytes().to_vec());
+static BASE62: LazyLock<Vec<u8>> =
+    LazyLock::new(|| "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789".as_bytes().to_vec());
+// RSA public key modulus (n) and exponent (e) extracted from the PEM
+// Original PEM: MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDgtQn2JZ34ZC28NWYpAUd98iZ37BUrX/aKzmFbt7clFSs6sXqHauqKWqdtLkF2KexO40H1YTX8z2lSgBBOAxLsvaklV8k4cBFK9snQXE9/DDaFt6Rr7iVZMldczhC0JNgTz+SHXT6CBHuX3e9SdB1Ua44oncaTWz7OBGLbCiK45wIDAQAB
+static RSA_MODULUS: LazyLock<Vec<u8>> = LazyLock::new(|| {
+    hex::decode("00e0b509f6259df8642dbc35662901477df22677ec152b5ff68ace615bb7b725152b3ab17a876aea8a5aa76d2e417629ec4ee341f56135fccf695280104e0312ecbda92557c93870114af6c9d05c4f7f0c3685b7a46bee255932575cce10b424d813cfe4875d3e82047b97ddef52741d546b8e289dc6935b3ece0462db0a22b8e7").unwrap()
+});
+static RSA_EXPONENT: LazyLock<Vec<u8>> = LazyLock::new(|| hex::decode("010001").unwrap());
+static EAPIKEY: LazyLock<Vec<u8>> = LazyLock::new(|| "e82ckenh8dichen8".as_bytes().to_vec());
 
 pub struct Crypto;
 

@@ -10,9 +10,9 @@ use crate::api::NcmClient;
 
 /// Lyrics cache directory
 fn lyrics_cache_dir() -> PathBuf {
-    dirs::cache_dir()
+    directories::ProjectDirs::from("life", "fxs", "rustle")
+        .map(|dirs| dirs.cache_dir().to_path_buf())
         .unwrap_or_else(|| PathBuf::from("."))
-        .join("rustle")
         .join("lyrics")
 }
 

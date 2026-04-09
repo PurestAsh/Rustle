@@ -7,6 +7,7 @@
 //! - WASM: No-op (not available)
 
 use crate::features::PlayMode;
+use std::sync::OnceLock;
 use tokio::sync::mpsc;
 
 // Platform-specific implementations
@@ -106,7 +107,7 @@ impl TrayHandle {
 pub type TrayResult = std::sync::Arc<tokio::sync::Mutex<mpsc::UnboundedReceiver<TrayCommand>>>;
 
 /// Global tray handle for updates
-static TRAY_HANDLE: once_cell::sync::OnceCell<TrayHandle> = once_cell::sync::OnceCell::new();
+static TRAY_HANDLE: OnceLock<TrayHandle> = OnceLock::new();
 
 /// Get the global tray handle
 pub fn get_handle() -> Option<&'static TrayHandle> {

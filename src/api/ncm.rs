@@ -139,15 +139,15 @@ impl NcmClient {
     }
 
     fn data_dir() -> PathBuf {
-        dirs::data_dir()
+        directories::ProjectDirs::from("life", "fxs", "rustle")
+            .map(|dirs| dirs.data_dir().to_path_buf())
             .unwrap_or_else(|| PathBuf::from("."))
-            .join("rustle")
     }
 
     fn cache_dir() -> PathBuf {
-        dirs::cache_dir()
+        directories::ProjectDirs::from("life", "fxs", "rustle")
+            .map(|dirs| dirs.cache_dir().to_path_buf())
             .unwrap_or_else(|| PathBuf::from("."))
-            .join("rustle")
     }
 
     pub fn cookie_file_path() -> PathBuf {

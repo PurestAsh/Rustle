@@ -15,7 +15,7 @@ jobs:
   linux-appimage:
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install dependencies
         run: |
@@ -108,7 +108,7 @@ jobs:
             arch: arm64
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -241,7 +241,7 @@ jobs:
   windows:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -306,7 +306,7 @@ jobs:
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Get version from tag
         id: version
@@ -318,7 +318,7 @@ jobs:
           sed -i "s/pkgver=.*/pkgver=${{ steps.version.outputs.version }}/" aur-bin/PKGBUILD
 
       - name: Publish rustle to AUR
-        uses: KSXGitHub/github-actions-deploy-aur@v3
+        uses: KSXGitHub/github-actions-deploy-aur@v4.1.2
         with:
           pkgname: rustle
           pkgbuild: aur/PKGBUILD
@@ -329,7 +329,7 @@ jobs:
           force_push: true
 
       - name: Publish rustle-bin to AUR
-        uses: KSXGitHub/github-actions-deploy-aur@v3
+        uses: KSXGitHub/github-actions-deploy-aur@v4.1.2
         with:
           pkgname: rustle-bin
           pkgbuild: aur-bin/PKGBUILD

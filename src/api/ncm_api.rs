@@ -7,21 +7,18 @@ pub mod model;
 
 use anyhow::{Result, anyhow};
 use encrypt::Crypto;
-use lazy_static::lazy_static;
 pub use model::*;
 use parking_lot::RwLock;
 use regex::Regex;
 use reqwest::{Client, header};
 use std::fmt;
-use std::sync::Arc;
+use std::sync::{Arc, LazyLock};
 use std::{collections::HashMap, path::PathBuf, time::Duration};
 
 // Re-export cookie jar for compatibility
 pub use reqwest::cookie::Jar as CookieJar;
 
-lazy_static! {
-    static ref _CSRF: Regex = Regex::new(r"_csrf=(?P<csrf>[^(;|$)]+)").unwrap();
-}
+static _CSRF: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"_csrf=(?P<csrf>[^(;|$)]+)").unwrap());
 
 static BASE_URL: &str = "https://music.163.com";
 
