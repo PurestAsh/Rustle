@@ -26,6 +26,10 @@ impl App {
             Message::ShowSuccessToast(msg) => Some(self.show_toast(Toast::success(msg.clone()), 3)),
             Message::ShowWarningToast(msg) => Some(self.show_toast(Toast::warning(msg.clone()), 4)),
             Message::ShowErrorToast(msg) => Some(self.show_toast(Toast::error(msg.clone()), 4)),
+            Message::HideToast => {
+                self.ui.toast_visible = false;
+                Some(Task::none())
+            }
             _ => None,
         }
     }

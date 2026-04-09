@@ -123,21 +123,6 @@ impl App {
                 Some(Task::none())
             }
 
-            Message::HideToast => {
-                self.ui.toast_visible = false;
-                if let Some(playlist) = &self.ui.importing_playlist {
-                    if playlist.completed {
-                        return Some(Task::perform(
-                            async {
-                                tokio::time::sleep(std::time::Duration::from_secs(1)).await;
-                            },
-                            |_| Message::ClearImportingPlaylist,
-                        ));
-                    }
-                }
-                Some(Task::none())
-            }
-
             Message::ClearImportingPlaylist => {
                 self.ui.importing_playlist = None;
                 Some(Task::none())
@@ -244,21 +229,30 @@ impl App {
                 let is_success = *imported > 0 || *skipped > 0;
 
                 let total_processed = *imported + *skipped + *errors;
-                let toast_task = if total_processed == 0 {
+                let (toast_task, clear_delay_secs) = if total_processed == 0 {
                     self.ui.importing_playlist = None;
-                    Task::done(Message::ShowErrorToast(
-                        "导入失败：未找到任何音频文件".to_string(),
-                    ))
+                    (
+                        Task::done(Message::ShowErrorToast(
+                            "导入失败：未找到任何音频文件".to_string(),
+                        )),
+                        None,
+                    )
                 } else if *errors == 0 {
-                    Task::done(Message::ShowSuccessToast(format!(
-                        "导入完成！成功导入 {} 首歌曲",
-                        imported
-                    )))
+                    (
+                        Task::done(Message::ShowSuccessToast(format!(
+                            "导入完成！成功导入 {} 首歌曲",
+                            imported
+                        ))),
+                        Some(4),
+                    )
                 } else {
-                    Task::done(Message::ShowWarningToast(format!(
-                        "导入完成：{} 首成功，{} 首失败",
-                        imported, errors
-                    )))
+                    (
+                        Task::done(Message::ShowWarningToast(format!(
+                            "导入完成：{} 首成功，{} 首失败",
+                            imported, errors
+                        ))),
+                        Some(5),
+                    )
                 };
 
                 if is_success {
@@ -273,7 +267,7 @@ impl App {
                         }
 
                         let db_for_reload = db.clone();
-                        return Task::batch([
+                        let mut tasks = vec![
                             toast_task,
                             Task::perform(
                                 async move {
@@ -295,7 +289,18 @@ impl App {
                                 },
                             ),
                             Task::perform(load_songs(db_for_reload), Message::SongsLoaded),
-                        ]);
+                        ];
+
+                        if let Some(secs) = clear_delay_secs {
+                            tasks.push(Task::perform(
+                                async move {
+                                    tokio::time::sleep(std::time::Duration::from_secs(secs)).await;
+                                },
+                                |_| Message::ClearImportingPlaylist,
+                            ));
+                        }
+
+                        return Task::batch(tasks);
                     }
                 } else {
                     return toast_task;
