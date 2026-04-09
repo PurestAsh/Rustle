@@ -17,8 +17,11 @@ use AesMode::{Cbc, Ecb};
 static IV: LazyLock<Vec<u8>> = LazyLock::new(|| "0102030405060708".as_bytes().to_vec());
 static PRESET_KEY: LazyLock<Vec<u8>> = LazyLock::new(|| "0CoJUm6Qyw8W8jud".as_bytes().to_vec());
 static LINUX_API_KEY: LazyLock<Vec<u8>> = LazyLock::new(|| "rFgB&h#%2?^eDg:Q".as_bytes().to_vec());
-static BASE62: LazyLock<Vec<u8>> =
-    LazyLock::new(|| "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789".as_bytes().to_vec());
+static BASE62: LazyLock<Vec<u8>> = LazyLock::new(|| {
+    "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+        .as_bytes()
+        .to_vec()
+});
 // RSA public key modulus (n) and exponent (e) extracted from the PEM
 // Original PEM: MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDgtQn2JZ34ZC28NWYpAUd98iZ37BUrX/aKzmFbt7clFSs6sXqHauqKWqdtLkF2KexO40H1YTX8z2lSgBBOAxLsvaklV8k4cBFK9snQXE9/DDaFt6Rr7iVZMldczhC0JNgTz+SHXT6CBHuX3e9SdB1Ua44oncaTWz7OBGLbCiK45wIDAQAB
 static RSA_MODULUS: LazyLock<Vec<u8>> = LazyLock::new(|| {

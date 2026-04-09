@@ -1,7 +1,7 @@
 //! Home page - "Home" view
 //! Main content area with carousel banner and trending songs from NCM API
 
-use iced::widget::{column, container, scrollable, Space};
+use iced::widget::{Space, column, container, scrollable};
 use iced::{Element, Fill, Padding};
 
 use crate::app::HomePageState;

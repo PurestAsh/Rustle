@@ -8,11 +8,11 @@
 //! - Professional spectrum analyzer (FFT-based)
 
 use iced::widget::canvas::{self, Canvas, Frame, Geometry, Path, Stroke, Text};
-use iced::widget::{column, container, pick_list, row, scrollable, text, toggler, Space};
+use iced::widget::{Space, column, container, pick_list, row, scrollable, text, toggler};
 use iced::{Alignment, Background, Color, Element, Fill, Length, Padding, Point, Theme};
 
 use crate::app::Message;
-use crate::audio::{analyzer::FFT_SIZE, AudioAnalysisData};
+use crate::audio::{AudioAnalysisData, analyzer::FFT_SIZE};
 use crate::features::{EqualizerPreset, Settings};
 use crate::i18n::{Key, Locale};
 use crate::ui::theme;
@@ -325,11 +325,11 @@ fn spectrum_mode_picker(bars_mode: bool) -> Element<'static, Message> {
 
     pick_list(Some(current), modes, |mode| mode.to_string())
         .on_select(|mode| Message::UpdateSpectrumBarsMode(mode == SpectrumMode::Bars))
-    .text_size(14)
-    .padding([8, 16])
-    .style(theme::settings_pick_list)
-    .menu_style(theme::settings_pick_list_menu)
-    .into()
+        .text_size(14)
+        .padding([8, 16])
+        .style(theme::settings_pick_list)
+        .menu_style(theme::settings_pick_list_menu)
+        .into()
 }
 
 /// EQ curve visualization using Canvas

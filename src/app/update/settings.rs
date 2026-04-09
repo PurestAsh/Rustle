@@ -392,10 +392,8 @@ impl App {
                         if let Some((cookie_jar, csrf_token)) =
                             crate::api::NcmClient::load_cookie_jar_from_file()
                         {
-                            *client = crate::api::NcmClient::from_cookie_jar(
-                                cookie_jar,
-                                csrf_token,
-                            );
+                            *client =
+                                crate::api::NcmClient::from_cookie_jar(cookie_jar, csrf_token);
                         } else {
                             *client = crate::api::NcmClient::new();
                         }

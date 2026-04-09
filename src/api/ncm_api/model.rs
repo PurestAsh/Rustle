@@ -847,20 +847,20 @@ pub struct SearchResponse {
 pub fn to_search_response(json: String, search_type: SearchType) -> Result<SearchResponse> {
     let value = &serde_json::from_str::<Value>(&json)?;
     let code: i64 = get_val!(value, "code")?;
-    
+
     if code != 200 {
         return Err(anyhow!("Search API returned code: {}", code));
     }
-    
+
     let unk = "unknown".to_string();
     let empty_vec = vec![];
     let mut response = SearchResponse::default();
-    
+
     match search_type {
         SearchType::Songs => {
             let songs_array: &Vec<Value> = get_val!(value, "result", "songs").unwrap_or(&empty_vec);
             response.song_count = get_val!(value, "result", "songCount").unwrap_or(0);
-            
+
             for v in songs_array.iter() {
                 response.songs.push(SongInfo {
                     id: get_val!(v, "id")?,
@@ -879,9 +879,10 @@ pub fn to_search_response(json: String, search_type: SearchType) -> Result<Searc
             }
         }
         SearchType::Albums => {
-            let albums_array: &Vec<Value> = get_val!(value, "result", "albums").unwrap_or(&empty_vec);
+            let albums_array: &Vec<Value> =
+                get_val!(value, "result", "albums").unwrap_or(&empty_vec);
             response.album_count = get_val!(value, "result", "albumCount").unwrap_or(0);
-            
+
             for v in albums_array.iter() {
                 response.albums.push(SongList {
                     id: get_val!(v, "id")?,
@@ -893,9 +894,10 @@ pub fn to_search_response(json: String, search_type: SearchType) -> Result<Searc
         }
         SearchType::Artists => {
             // Artists are returned as a list, we convert to SongList for consistency
-            let artists_array: &Vec<Value> = get_val!(value, "result", "artists").unwrap_or(&empty_vec);
+            let artists_array: &Vec<Value> =
+                get_val!(value, "result", "artists").unwrap_or(&empty_vec);
             response.album_count = get_val!(value, "result", "artistCount").unwrap_or(0);
-            
+
             for v in artists_array.iter() {
                 response.albums.push(SongList {
                     id: get_val!(v, "id")?,
@@ -906,9 +908,10 @@ pub fn to_search_response(json: String, search_type: SearchType) -> Result<Searc
             }
         }
         SearchType::Playlists => {
-            let playlists_array: &Vec<Value> = get_val!(value, "result", "playlists").unwrap_or(&empty_vec);
+            let playlists_array: &Vec<Value> =
+                get_val!(value, "result", "playlists").unwrap_or(&empty_vec);
             response.playlist_count = get_val!(value, "result", "playlistCount").unwrap_or(0);
-            
+
             for v in playlists_array.iter() {
                 response.playlists.push(SongList {
                     id: get_val!(v, "id")?,
@@ -919,6 +922,6 @@ pub fn to_search_response(json: String, search_type: SearchType) -> Result<Searc
             }
         }
     }
-    
+
     Ok(response)
 }

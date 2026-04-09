@@ -416,7 +416,8 @@ pub fn view(
         for playlist in user_playlists {
             let name = playlist.name.clone();
             let id = playlist.id;
-            let is_active = matches!(current_route, Route::NcmPlaylist(current_id) if *current_id == id);
+            let is_active =
+                matches!(current_route, Route::NcmPlaylist(current_id) if *current_id == id);
             let hover_progress = sidebar_animations.get_progress(&SidebarId::UserPlaylist(id));
 
             cloud_playlist_items.push(sidebar_button_animated(

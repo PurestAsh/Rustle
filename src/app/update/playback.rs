@@ -370,7 +370,9 @@ impl App {
             AudioEvent::SeekFailed { error } => {
                 tracing::warn!("Seek failed: {}", error);
                 if error.contains("not supported") {
-                    return Task::done(Message::ShowToast("该格式不支持拖动进度条".to_string()));
+                    return Task::done(Message::ShowWarningToast(
+                        "该格式不支持拖动进度条".to_string(),
+                    ));
                 }
                 if error.contains("end of stream") || error.contains("streaming") {
                     let progress = self
@@ -379,7 +381,7 @@ impl App {
                         .as_ref()
                         .map(|b| (b.progress() * 100.0) as u32)
                         .unwrap_or(0);
-                    return Task::done(Message::ShowToast(format!(
+                    return Task::done(Message::ShowInfoToast(format!(
                         "正在缓冲中 ({}%)，请稍候再拖动进度",
                         progress
                     )));

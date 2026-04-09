@@ -3,10 +3,10 @@
 //! Modern dark minimalist toast notifications.
 //! Follows Shadcn UI / Spotify style: dark surface with accent color accents.
 
-use iced::widget::{Space, container, row, text};
+use iced::widget::{Space, container, row, svg, text};
 use iced::{Alignment, Element, Padding};
 
-use crate::ui::theme;
+use crate::ui::{icons, theme};
 
 /// Toast notification style
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -28,13 +28,13 @@ impl ToastStyle {
         }
     }
 
-    /// Get the icon for this style
-    pub fn icon(&self) -> &'static str {
+    /// Get the icon SVG for this style
+    pub fn icon_svg(&self) -> &'static str {
         match self {
-            ToastStyle::Success => "✓",
-            ToastStyle::Error => "✗",
-            ToastStyle::Warning => "⚠",
-            ToastStyle::Info => "ℹ",
+            ToastStyle::Success => icons::CHECK,
+            ToastStyle::Error => icons::ERROR,
+            ToastStyle::Warning => icons::WARNING,
+            ToastStyle::Info => icons::INFO,
         }
     }
 }
@@ -44,7 +44,6 @@ impl ToastStyle {
 pub struct Toast {
     pub message: String,
     pub style: ToastStyle,
-    pub visible: bool,
 }
 
 impl Toast {
@@ -52,7 +51,6 @@ impl Toast {
         Self {
             message: message.into(),
             style,
-            visible: true,
         }
     }
 
@@ -71,14 +69,6 @@ impl Toast {
     pub fn info(message: impl Into<String>) -> Self {
         Self::new(message, ToastStyle::Info)
     }
-
-    pub fn hide(&mut self) {
-        self.visible = false;
-    }
-
-    pub fn show(&mut self) {
-        self.visible = true;
-    }
 }
 
 /// Build a toast notification widget
@@ -89,12 +79,8 @@ impl Toast {
 /// - Accent color only on icon (not background)
 /// - Soft shadow for floating effect
 pub fn view_toast<'a, Message: 'a>(toast: &Toast) -> Element<'a, Message> {
-    if !toast.visible {
-        return Space::new().width(0).height(0).into();
-    }
-
     let accent_color = toast.style.accent_color();
-    let icon = toast.style.icon();
+    let icon = toast.style.icon_svg();
     let message = toast.message.clone();
 
     // Left accent bar (thin vertical line)
@@ -110,7 +96,12 @@ pub fn view_toast<'a, Message: 'a>(toast: &Toast) -> Element<'a, Message> {
     });
 
     // Icon with accent color
-    let icon_widget = text(icon).size(14).color(accent_color);
+    let icon_widget = svg(svg::Handle::from_memory(icon.as_bytes()))
+        .width(14)
+        .height(14)
+        .style(move |_theme, _status| svg::Style {
+            color: Some(accent_color),
+        });
 
     // Message text
     let message_widget = text(message).size(13).style(|theme| text::Style {

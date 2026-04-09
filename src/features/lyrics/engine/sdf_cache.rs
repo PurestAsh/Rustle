@@ -11,10 +11,10 @@
 use crate::features::lyrics::engine::sdf_generator::{SdfBitmap, SdfConfig, SdfGenerator};
 use cosmic_text::{CacheKey, FontSystem};
 use iced::wgpu;
+use iced::wgpu::{Device, Queue};
 use parking_lot::Mutex;
 use std::collections::HashMap;
 use std::sync::{Arc, LazyLock};
-use iced::wgpu::{Device, Queue};
 
 /// 全局预生成缓存
 /// 用于在后台线程生成 SDF 位图后，在主线程导入到 SdfCache

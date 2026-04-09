@@ -3,7 +3,7 @@
 //! Displays personalized recommendations (for logged-in users) and
 //! hot playlists in a modern grid layout.
 
-use iced::widget::{button, column, container, scrollable, text, Space};
+use iced::widget::{Space, button, column, container, scrollable, text};
 use iced::{Element, Fill, Padding};
 
 use crate::app::{DiscoverPageState, DiscoverViewMode, Message};

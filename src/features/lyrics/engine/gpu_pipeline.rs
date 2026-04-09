@@ -27,9 +27,9 @@
 use bytemuck::{Pod, Zeroable};
 use cosmic_text::FontSystem;
 use iced::wgpu;
+use iced::wgpu::{Device, Queue, TextureFormat};
 use parking_lot::{Mutex, RwLock};
 use std::sync::Arc;
-use iced::wgpu::{Device, Queue, TextureFormat};
 
 use super::CachedShapedLine;
 use super::interlude_dots::InterludeDots;

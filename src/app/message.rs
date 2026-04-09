@@ -170,8 +170,12 @@ pub enum Message {
     RemoveWatchedFolder(PathBuf),
     /// File watcher event
     WatcherEvent(WatchEvent),
-    /// Show toast notification
-    ShowToast(String),
+    /// Show info toast notification
+    ShowInfoToast(String),
+    /// Show success toast notification
+    ShowSuccessToast(String),
+    /// Show warning toast notification
+    ShowWarningToast(String),
     /// Show error toast notification
     ShowErrorToast(String),
     /// Hide toast notification
@@ -694,7 +698,9 @@ impl std::fmt::Debug for Message {
             Self::AddWatchedFolder(_) => simple!("AddWatchedFolder"),
             Self::RemoveWatchedFolder(_) => simple!("RemoveWatchedFolder"),
             Self::WatcherEvent(_) => simple!("WatcherEvent"),
-            Self::ShowToast(_) => simple!("ShowToast"),
+            Self::ShowInfoToast(_) => simple!("ShowInfoToast"),
+            Self::ShowSuccessToast(_) => simple!("ShowSuccessToast"),
+            Self::ShowWarningToast(_) => simple!("ShowWarningToast"),
             Self::ShowErrorToast(_) => simple!("ShowErrorToast"),
             Self::HideToast => simple!("HideToast"),
             Self::ClearImportingPlaylist => simple!("ClearImportingPlaylist"),

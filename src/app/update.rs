@@ -15,11 +15,12 @@ mod playlist;
 mod preload;
 pub mod preload_manager;
 mod queue;
-mod router;
 pub mod queue_navigator;
+mod router;
 mod search;
 mod settings;
 pub mod song_resolver;
+mod toast;
 mod tray;
 mod window;
 
@@ -38,6 +39,9 @@ impl App {
             return task;
         }
         if let Some(task) = self.handle_import(&message) {
+            return task;
+        }
+        if let Some(task) = self.handle_toast(&message) {
             return task;
         }
         if let Some(task) = self.handle_playback(&message) {

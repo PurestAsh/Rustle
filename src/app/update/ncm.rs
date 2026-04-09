@@ -41,14 +41,14 @@ impl App {
                     if let Some(songs) = songs_opt {
                         Message::AddNcmPlaylist(songs, true)
                     } else {
-                        Message::ShowToast(not_logged_in_msg)
+                        Message::ShowWarningToast(not_logged_in_msg)
                     }
                 },
             )
         } else {
             self.exit_fm_mode();
             let msg = self.core.locale.get(Key::NotLoggedIn).to_string();
-            Task::done(Message::ShowToast(msg))
+            Task::done(Message::ShowWarningToast(msg))
         }
     }
 
@@ -223,14 +223,9 @@ impl App {
             Message::TryAutoLogin(retry_count) => {
                 let retry = *retry_count;
                 let proxy_url = self.core.settings.network.proxy_url();
-                if let Some((cookie_jar, csrf_token)) =
-                    NcmClient::load_cookie_jar_from_file()
-                {
-                    let client = NcmClient::from_cookie_jar_with_proxy(
-                        cookie_jar,
-                        csrf_token,
-                        proxy_url,
-                    );
+                if let Some((cookie_jar, csrf_token)) = NcmClient::load_cookie_jar_from_file() {
+                    let client =
+                        NcmClient::from_cookie_jar_with_proxy(cookie_jar, csrf_token, proxy_url);
                     self.set_ncm_client(client.clone());
 
                     Some(Task::perform(
@@ -495,7 +490,7 @@ impl App {
                 let avatar_url = login_info.avatar_url.clone();
 
                 Some(Task::batch([
-                    Task::done(Message::ShowToast("登录成功！".to_string())),
+                    Task::done(Message::ShowSuccessToast("登录成功！".to_string())),
                     self.load_homepage_data(),
                     Task::perform(
                         async move {
@@ -540,7 +535,9 @@ impl App {
                 let proxy_url = self.core.settings.network.proxy_url();
                 self.set_ncm_client(NcmClient::with_proxy(proxy_url));
 
-                Some(Task::done(Message::ShowToast("已退出登录".to_string())))
+                Some(Task::done(Message::ShowSuccessToast(
+                    "已退出登录".to_string(),
+                )))
             }
 
             Message::UserInfoLoaded(user_info) => {
@@ -647,7 +644,7 @@ impl App {
                                         if let Some(song) = song_opt {
                                             Message::PlayNcmSong(song)
                                         } else {
-                                            Message::ShowToast("无法获取歌曲信息".to_string())
+                                            Message::ShowErrorToast("无法获取歌曲信息".to_string())
                                         }
                                     },
                                 ));
@@ -767,7 +764,9 @@ impl App {
 
             Message::ToggleFavorite(song_id) => {
                 if !self.core.is_logged_in {
-                    return Some(Task::done(Message::ShowToast("请先登录".to_string())));
+                    return Some(Task::done(Message::ShowWarningToast(
+                        "请先登录".to_string(),
+                    )));
                 }
 
                 if let Some(client) = &self.core.ncm_client {
@@ -793,7 +792,7 @@ impl App {
                             if let Some(liked) = result {
                                 Message::FavoriteStatusChanged(song_id, liked)
                             } else {
-                                Message::ShowToast("操作失败".to_string())
+                                Message::ShowErrorToast("操作失败".to_string())
                             }
                         },
                     ))
@@ -930,12 +929,14 @@ impl App {
                             if let Some((song_info, path, cover_path)) = result {
                                 Message::PlayNcmUrl(song_info, path, cover_path)
                             } else {
-                                Message::ShowToast("无法播放歌曲".to_string())
+                                Message::ShowErrorToast("无法播放歌曲".to_string())
                             }
                         },
                     ))
                 } else {
-                    Some(Task::done(Message::ShowToast("请先登录".to_string())))
+                    Some(Task::done(Message::ShowWarningToast(
+                        "请先登录".to_string(),
+                    )))
                 }
             }
 
@@ -1003,7 +1004,7 @@ impl App {
                                 final_song.id = id;
                                 Message::PlayResolvedNcmSong(final_song)
                             } else {
-                                Message::ShowToast("数据库错误".to_string())
+                                Message::ShowErrorToast("数据库错误".to_string())
                             }
                         },
                     ))
@@ -1500,7 +1501,9 @@ impl App {
 
             Message::TogglePlaylistSubscribe(playlist_id) => {
                 if !self.core.is_logged_in {
-                    return Some(Task::done(Message::ShowToast("请先登录".to_string())));
+                    return Some(Task::done(Message::ShowWarningToast(
+                        "请先登录".to_string(),
+                    )));
                 }
 
                 // Get current subscription status
@@ -1533,7 +1536,7 @@ impl App {
                             if let Some((id, subscribed)) = result {
                                 Message::PlaylistSubscribeChanged(id, subscribed)
                             } else {
-                                Message::ShowToast("操作失败".to_string())
+                                Message::ShowErrorToast("操作失败".to_string())
                             }
                         },
                     ))
@@ -1554,7 +1557,7 @@ impl App {
                 } else {
                     "已取消收藏"
                 };
-                Some(Task::done(Message::ShowToast(msg.to_string())))
+                Some(Task::done(Message::ShowSuccessToast(msg.to_string())))
             }
 
             _ => None,

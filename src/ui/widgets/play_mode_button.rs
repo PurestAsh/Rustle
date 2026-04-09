@@ -61,7 +61,7 @@ pub fn view(play_mode: PlayMode, size: ButtonSize, is_fm_mode: bool) -> Element<
     let radius = size.radius();
 
     let on_press = if is_fm_mode {
-        Message::ShowToast("私人FM模式下无法更改播放模式".to_string())
+        Message::ShowWarningToast("私人FM模式下无法更改播放模式".to_string())
     } else {
         Message::CyclePlayMode
     };

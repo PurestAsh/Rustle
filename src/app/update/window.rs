@@ -37,7 +37,11 @@ impl App {
         }
 
         tracing::info!(
-            backend = if window::is_wayland_backend() { "wayland" } else { "x11" },
+            backend = if window::is_wayland_backend() {
+                "wayland"
+            } else {
+                "x11"
+            },
             "Hiding window to tray"
         );
 
@@ -57,7 +61,11 @@ impl App {
         }
 
         tracing::info!(
-            backend = if window::is_wayland_backend() { "wayland" } else { "x11" },
+            backend = if window::is_wayland_backend() {
+                "wayland"
+            } else {
+                "x11"
+            },
             "Showing window"
         );
 
@@ -169,7 +177,8 @@ impl App {
 
             Message::WindowOperationComplete => {
                 self.core.window_operation_pending = false;
-                self.core.window_visibility = finalize_window_visibility(self.current_visible_mode());
+                self.core.window_visibility =
+                    finalize_window_visibility(self.current_visible_mode());
                 Some(Task::none())
             }
 

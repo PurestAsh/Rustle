@@ -148,7 +148,9 @@ impl App {
                 if let Some(idx) = self.library.queue_index {
                     return Some(self.handle_playback_failure(idx, "Song resolution failed"));
                 }
-                Some(Task::done(Message::ShowToast("无法加载歌曲".to_string())))
+                Some(Task::done(Message::ShowErrorToast(
+                    "无法加载歌曲".to_string(),
+                )))
             }
 
             Message::RemoveFromQueue(idx) => {

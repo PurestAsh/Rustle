@@ -227,7 +227,9 @@ fn search_bar_view(search_query: &str, locale: Locale) -> Element<'_, Message> {
     container(content)
         .width(320)
         .style(|theme| iced::widget::container::Style {
-            background: Some(iced::Background::Color(iced::Color::from_rgba(1.0, 1.0, 1.0, 0.08))),
+            background: Some(iced::Background::Color(iced::Color::from_rgba(
+                1.0, 1.0, 1.0, 0.08,
+            ))),
             border: iced::Border {
                 radius: 20.0.into(),
                 width: 1.0,

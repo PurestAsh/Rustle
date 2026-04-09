@@ -3,10 +3,10 @@
 //! Provides optimized hover state management for UI elements.
 //! Only tracks active + fading animations for O(1) complexity.
 
-use std::hash::Hash;
-use std::time::{Duration, Instant};
 use iced_anim::Animated;
 use iced_anim::transition::Easing;
+use std::hash::Hash;
+use std::time::{Duration, Instant};
 
 /// Hover animation duration (200ms for snappy feel)
 const HOVER_DURATION: Duration = Duration::from_millis(200);

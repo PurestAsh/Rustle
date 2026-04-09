@@ -161,7 +161,7 @@ impl App {
                                 if let Some(songs) = songs_opt {
                                     Message::AddNcmPlaylist(songs, true)
                                 } else {
-                                    Message::ShowToast(error_msg)
+                                    Message::ShowErrorToast(error_msg)
                                 }
                             },
                         ));
@@ -187,7 +187,7 @@ impl App {
                             if let Some(songs) = songs_opt {
                                 Message::AddNcmPlaylist(songs, true)
                             } else {
-                                Message::ShowToast(error_msg)
+                                Message::ShowErrorToast(error_msg)
                             }
                         },
                     ));

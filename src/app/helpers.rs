@@ -461,12 +461,12 @@ impl App {
                         // FM mode: append songs and start playback
                         Message::AddNcmPlaylist(songs, true)
                     } else {
-                        Message::ShowToast("获取私人FM歌曲失败".to_string())
+                        Message::ShowErrorToast("获取私人FM歌曲失败".to_string())
                     }
                 },
             )
         } else {
-            Task::done(Message::ShowToast("请先登录".to_string()))
+            Task::done(Message::ShowWarningToast("请先登录".to_string()))
         }
     }
 }

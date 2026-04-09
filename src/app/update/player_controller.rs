@@ -407,7 +407,7 @@ impl App {
             Task::batch([resolve_task, event_task])
         } else {
             self.library.pending_resolution_idx = None;
-            Task::done(Message::ShowToast("请先登录".to_string()))
+            Task::done(Message::ShowWarningToast("请先登录".to_string()))
         }
     }
 

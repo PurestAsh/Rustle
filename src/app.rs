@@ -174,12 +174,11 @@ impl App {
         };
 
         // 9. Carousel auto-advance (5s)
-        let carousel_sub =
-            if !power_saving && !self.ui.home.banners.is_empty() && !window_hidden {
-                iced::time::every(Duration::from_secs(5)).map(|_| Message::CarouselTick)
-            } else {
-                iced::Subscription::none()
-            };
+        let carousel_sub = if !power_saving && !self.ui.home.banners.is_empty() && !window_hidden {
+            iced::time::every(Duration::from_secs(5)).map(|_| Message::CarouselTick)
+        } else {
+            iced::Subscription::none()
+        };
 
         // 10. Window resize + shown/focus events
         let resize_sub =

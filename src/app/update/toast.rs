@@ -1,0 +1,32 @@
+//! Toast message handlers
+
+use iced::Task;
+
+use crate::app::message::Message;
+use crate::app::state::App;
+use crate::ui::widgets::Toast;
+
+impl App {
+    fn show_toast(&mut self, toast: Toast, hide_after_secs: u64) -> Task<Message> {
+        self.ui.toast = Some(toast);
+        self.ui.toast_visible = true;
+
+        Task::perform(
+            async move {
+                tokio::time::sleep(std::time::Duration::from_secs(hide_after_secs)).await;
+            },
+            |_| Message::HideToast,
+        )
+    }
+
+    /// Handle toast-related messages
+    pub fn handle_toast(&mut self, message: &Message) -> Option<Task<Message>> {
+        match message {
+            Message::ShowInfoToast(msg) => Some(self.show_toast(Toast::info(msg.clone()), 3)),
+            Message::ShowSuccessToast(msg) => Some(self.show_toast(Toast::success(msg.clone()), 3)),
+            Message::ShowWarningToast(msg) => Some(self.show_toast(Toast::warning(msg.clone()), 4)),
+            Message::ShowErrorToast(msg) => Some(self.show_toast(Toast::error(msg.clone()), 4)),
+            _ => None,
+        }
+    }
+}

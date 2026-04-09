@@ -1,7 +1,7 @@
 // src/app/view.rs
 //! Application view rendering
 
-use iced::widget::{column, container, row, stack, Space};
+use iced::widget::{Space, column, container, row, stack};
 use iced::{Alignment, Element, Fill};
 
 use super::message::Message;
@@ -185,7 +185,12 @@ impl App {
 
         let needs_top_padding = !matches!(
             self.ui.current_route,
-            Route::Settings(_) | Route::AudioEngine | Route::Playlist(_) | Route::NcmPlaylist(_) | Route::RecentlyPlayed | Route::Search { .. }
+            Route::Settings(_)
+                | Route::AudioEngine
+                | Route::Playlist(_)
+                | Route::NcmPlaylist(_)
+                | Route::RecentlyPlayed
+                | Route::Search { .. }
         );
 
         let main_content = if needs_top_padding {

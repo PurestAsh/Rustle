@@ -18,10 +18,10 @@
 //! - Element Caching: Each item_builder is called only once per frame
 //! - Optimized: Minimizes item_builder calls per frame
 
+use iced::advanced::Shell;
 use iced::advanced::layout::{self, Layout};
 use iced::advanced::renderer;
 use iced::advanced::widget::{self, Tree, Widget};
-use iced::advanced::Shell;
 use iced::mouse::{self, Cursor};
 use iced::{Color, Element, Event, Length, Point, Rectangle, Size};
 use std::cell::RefCell;

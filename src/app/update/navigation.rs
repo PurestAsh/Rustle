@@ -37,7 +37,10 @@ impl App {
                 Some(self.navigate_to_route(route, true))
             }
 
-            Message::LibrarySelect(_) | Message::OpenSettings | Message::OpenSettingsWithCloseLyrics | Message::OpenAudioEngine => {
+            Message::LibrarySelect(_)
+            | Message::OpenSettings
+            | Message::OpenSettingsWithCloseLyrics
+            | Message::OpenAudioEngine => {
                 let Some(route) = self.route_for_message(message) else {
                     return Some(Task::none());
                 };

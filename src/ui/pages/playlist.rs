@@ -10,7 +10,7 @@ use std::collections::HashSet;
 use std::rc::Rc;
 
 use iced::widget::{
-    button, column, container, image, mouse_area, row, svg, text, text_input, Space,
+    Space, button, column, container, image, mouse_area, row, svg, text, text_input,
 };
 use iced::{Alignment, Color, Element, Fill, Padding};
 

@@ -7,7 +7,6 @@ use iced::time::Instant;
 use crate::app::helpers::load_playlist_view;
 use crate::app::message::Message;
 use crate::app::state::{App, Route};
-use crate::ui::widgets::Toast;
 
 impl App {
     pub(super) fn open_local_playlist_route(&mut self, playlist_id: i64) -> Task<Message> {
@@ -96,15 +95,9 @@ impl App {
                 if self.ui.playlist_page.current.as_ref().map(|p| p.id) == Some(*id) {
                     self.ui.playlist_page.current = None;
                 }
-                // Show toast with auto-dismiss after 3 seconds
-                self.ui.toast = Some(Toast::success("歌单已删除".to_string()));
-                self.ui.toast_visible = true;
-                Some(Task::perform(
-                    async {
-                        tokio::time::sleep(std::time::Duration::from_secs(3)).await;
-                    },
-                    |_| Message::HideToast,
-                ))
+                Some(Task::done(Message::ShowSuccessToast(
+                    "歌单已删除".to_string(),
+                )))
             }
 
             Message::PlaylistViewLoaded(view) => {
@@ -266,30 +259,6 @@ impl App {
                     ]));
                 }
                 Some(Task::none())
-            }
-
-            Message::ShowToast(msg) => {
-                self.ui.toast = Some(Toast::success(msg.clone()));
-                self.ui.toast_visible = true;
-                // Auto-hide toast after 3 seconds
-                Some(Task::perform(
-                    async {
-                        tokio::time::sleep(std::time::Duration::from_secs(3)).await;
-                    },
-                    |_| Message::HideToast,
-                ))
-            }
-
-            Message::ShowErrorToast(msg) => {
-                self.ui.toast = Some(Toast::error(msg.clone()));
-                self.ui.toast_visible = true;
-                // Auto-hide error toast after 4 seconds
-                Some(Task::perform(
-                    async {
-                        tokio::time::sleep(std::time::Duration::from_secs(4)).await;
-                    },
-                    |_| Message::HideToast,
-                ))
             }
 
             Message::TogglePlaylistSearch => {

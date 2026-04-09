@@ -90,7 +90,11 @@ impl App {
 
             Message::PlaySearchSong(song_info) => {
                 // Convert SongInfo to playable format and play
-                tracing::info!("Playing search result: {} - {}", song_info.name, song_info.singer);
+                tracing::info!(
+                    "Playing search result: {} - {}",
+                    song_info.name,
+                    song_info.singer
+                );
                 Some(Task::done(Message::PlayNcmSong(song_info.clone())))
             }
 

@@ -2,10 +2,10 @@
 //!
 //! A custom vertical slider implementation since iced doesn't provide one natively.
 
+use iced::advanced::Shell;
 use iced::advanced::layout::{self, Layout};
 use iced::advanced::renderer;
 use iced::advanced::widget::{self, Widget};
-use iced::advanced::Shell;
 use iced::event::Event;
 use iced::mouse;
 use iced::{Background, Border, Color, Element, Length, Rectangle, Size, Theme};

@@ -5,7 +5,7 @@
 //! Clicking tab scrolls to corresponding section
 
 use iced::widget::{
-    button, column, container, pick_list, row, scrollable, svg, text, text_input, toggler, Space,
+    Space, button, column, container, pick_list, row, scrollable, svg, text, text_input, toggler,
 };
 use iced::{Alignment, Background, Border, Color, Element, Fill, Padding};
 
@@ -918,7 +918,7 @@ fn about_section(_locale: Locale) -> Element<'static, Message> {
         });
 
     // Copyright
-    let copyright = text("2025 FXS").size(12).style(|theme| text::Style {
+    let copyright = text("2025-2026 FXS").size(12).style(|theme| text::Style {
         color: Some(theme::settings_desc(theme)),
     });
 

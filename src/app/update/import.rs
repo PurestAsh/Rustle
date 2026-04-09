@@ -11,7 +11,6 @@ use crate::features::import::{
     ScanConfig, ScanHandle, ScanProgress, ScanState, progress_channel, scan_and_import,
 };
 use crate::ui::components::ImportingPlaylist;
-use crate::ui::widgets::Toast;
 
 impl App {
     /// Handle import-related messages
@@ -245,16 +244,22 @@ impl App {
                 let is_success = *imported > 0 || *skipped > 0;
 
                 let total_processed = *imported + *skipped + *errors;
-                let toast = if total_processed == 0 {
+                let toast_task = if total_processed == 0 {
                     self.ui.importing_playlist = None;
-                    Toast::error("导入失败：未找到任何音频文件")
+                    Task::done(Message::ShowErrorToast(
+                        "导入失败：未找到任何音频文件".to_string(),
+                    ))
                 } else if *errors == 0 {
-                    Toast::success(format!("导入完成！成功导入 {} 首歌曲", imported))
+                    Task::done(Message::ShowSuccessToast(format!(
+                        "导入完成！成功导入 {} 首歌曲",
+                        imported
+                    )))
                 } else {
-                    Toast::warning(format!("导入完成：{} 首成功，{} 首失败", imported, errors))
+                    Task::done(Message::ShowWarningToast(format!(
+                        "导入完成：{} 首成功，{} 首失败",
+                        imported, errors
+                    )))
                 };
-                self.ui.toast = Some(toast);
-                self.ui.toast_visible = true;
 
                 if is_success {
                     if let (Some(db), Some(playlist)) = (&self.core.db, &self.ui.importing_playlist)
@@ -269,6 +274,7 @@ impl App {
 
                         let db_for_reload = db.clone();
                         return Task::batch([
+                            toast_task,
                             Task::perform(
                                 async move {
                                     let result = create_playlist_from_import(
@@ -289,22 +295,13 @@ impl App {
                                 },
                             ),
                             Task::perform(load_songs(db_for_reload), Message::SongsLoaded),
-                            Task::perform(
-                                async {
-                                    tokio::time::sleep(std::time::Duration::from_secs(4)).await;
-                                },
-                                |_| Message::HideToast,
-                            ),
                         ]);
                     }
                 } else {
-                    return Task::perform(
-                        async {
-                            tokio::time::sleep(std::time::Duration::from_secs(4)).await;
-                        },
-                        |_| Message::HideToast,
-                    );
+                    return toast_task;
                 }
+
+                return toast_task;
             }
             ScanProgress::Cancelled => {
                 tracing::info!("Scan cancelled");
@@ -312,19 +309,11 @@ impl App {
                 self.library.scan_handle = None;
                 self.ui.importing_playlist = None;
 
-                self.ui.toast = Some(Toast::error("导入已取消".to_string()));
-                self.ui.toast_visible = true;
-                return Task::perform(
-                    async {
-                        tokio::time::sleep(std::time::Duration::from_secs(3)).await;
-                    },
-                    |_| Message::HideToast,
-                );
+                return Task::done(Message::ShowWarningToast("导入已取消".to_string()));
             }
             ScanProgress::Error(e) => {
                 tracing::error!("Scan error: {}", e);
-                self.ui.toast = Some(Toast::error(format!("导入失败：{}", e)));
-                self.ui.toast_visible = true;
+                return Task::done(Message::ShowErrorToast(format!("导入失败：{}", e)));
             }
             _ => {}
         }
